@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Căn phòng nhỏ của Shojinluv</title>
+  <meta name="description" content="Một căn phòng 3D nho nhỏ làm bằng Three.js. Bấm vào đồ vật để xem các dự án của Shojinluv.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;800&display=swap">
+  <link rel="stylesheet" href="css/room.css">
+
+  <!-- Import map: cho trình duyệt biết "three" nằm ở đâu (dùng bản có sẵn trong thư mục vendor) -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three/three.module.min.js",
+        "three/addons/": "./vendor/three/addons/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="scene" aria-label="Căn phòng 3D. Kéo để xoay, bấm vào đồ vật để khám phá."></canvas>
+
+  <header class="hud">
+    <h1>Căn phòng nhỏ của <span>Shojinluv</span></h1>
+    <p class="hint hint--mouse">Kéo để xoay · Cuộn để phóng to · Bấm vào đồ vật để khám phá</p>
+    <p class="hint hint--touch">Vuốt để xoay · Chụm hai ngón để phóng to · Chạm vào đồ vật</p>
+  </header>
+
+  <button class="night-btn" id="btn-night" type="button" aria-pressed="false">
+    <svg class="icon icon--moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z" fill="currentColor"/></svg>
+    <svg class="icon icon--sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></g></svg>
+    <span>Buổi tối</span>
+  </button>
+
+  <p class="progress" id="progress" aria-live="polite"></p>
+  <div class="tooltip" id="tooltip" role="tooltip"></div>
+  <div class="fx" id="fx" aria-hidden="true"></div>
+
+  <aside class="panel" id="panel" role="dialog" aria-labelledby="panel-title" aria-hidden="true">
+    <button class="panel__close" id="panel-close" type="button" aria-label="Đóng">×</button>
+    <p class="panel__tag" id="panel-tag"></p>
+    <h2 class="panel__title" id="panel-title"></h2>
+    <img class="panel__img" id="panel-img" alt="" hidden>
+    <div class="panel__body" id="panel-body"></div>
+    <div class="panel__links" id="panel-links"></div>
+  </aside>
+
+  <div class="loader" id="loader">
+    <div class="loader__dot"></div>
+    <p>Đang dọn phòng…</p>
+  </div>
+  <div class="fallback">
+    <p>Trình duyệt của bạn chưa hỗ trợ WebGL nên chưa xem được căn phòng 3D 😢</p>
+  </div>
+  <noscript>
+    <div class="fallback fallback--show"><p>Cần bật JavaScript để vào phòng nha.</p></div>
+  </noscript>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
