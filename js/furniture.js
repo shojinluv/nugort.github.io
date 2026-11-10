@@ -329,56 +329,128 @@ function buildBag(world) {
   clickable(world, 'bag', g);
 }
 
-// ---------- Mèo Mướp ngủ trong vệt nắng (bấm vào → mèo giật mình) ----------
+// ---------- Mèo Sphynx ngủ trong vệt nắng (bấm vào → mèo giật mình) ----------
+// Sphynx là giống mèo không lông: da trần màu hồng đào, tai to như tai dơi,
+// trán nhiều nếp nhăn, mắt to hình quả chanh và cái đuôi dài thon như roi.
 function buildCat(world) {
   const g = at(new THREE.Group(), 1.2, 0.03, 1.5, 0, -0.5, 0);
-  const fur = mat('#f2a65a');
-  const furDark = mat('#d9803a');
-  const white = mat('#fff6ea');
+  // Da trần hơi bóng hơn lông, nên dùng material riêng với roughness thấp hơn mặc định
+  const skin = new THREE.MeshStandardMaterial({ color: '#f3c1aa', roughness: 0.6 });
+  const crease = mat('#d8968a'); // nếp nhăn: da sẫm hơn một chút
+  const earPink = mat('#f4a3a3'); // lòng tai
   const ink = mat('#3a2a22');
   const pink = mat('#ff9eaa');
 
   const body = new THREE.Group(); // thân, sẽ phồng xẹp theo nhịp thở
   g.add(body);
-  const torso = sphere(0.5, fur, 28, 18);
-  torso.scale.set(1, 0.55, 0.78);
-  body.add(at(torso, 0, 0.27, 0));
-  const patch = sphere(0.43, furDark, 24, 14);
-  patch.scale.set(0.72, 0.55, 0.6);
-  body.add(at(patch, -0.12, 0.33, 0));
+  const torso = sphere(0.5, skin, 28, 18);
+  torso.scale.set(1, 0.52, 0.66); // Sphynx thon hơn mèo ta
+  body.add(at(torso, 0, 0.26, 0));
+  const haunch = sphere(0.24, skin, 20, 14); // đùi sau nhô lên, lộ cơ vì không có lông che
+  haunch.scale.set(1.1, 0.85, 0.7);
+  body.add(at(haunch, -0.22, 0.24, 0.2));
+
+  // Hai chân trước duỗi ra từ ngực, luồn dưới cằm (mèo gối đầu lên chân mà ngủ).
+  // Phần đầu que nằm lọt trong thân, nên nhìn từ ngoài chỉ thấy cẳng chân và bàn chân.
+  for (const z of [0.01, 0.23]) {
+    g.add(stick(new THREE.Vector3(0.2, 0.13, z * 0.75), new THREE.Vector3(0.72, 0.05, z), 0.05, skin));
+    const paw = sphere(0.065, skin, 14, 10);
+    paw.scale.set(1.4, 0.6, 1);
+    g.add(at(paw, 0.76, 0.04, z));
+  }
 
   const head = at(new THREE.Group(), 0.5, 0.24, 0.12, 0, 0, -0.12);
   g.add(head);
-  const skull = sphere(0.27, fur, 24, 16);
-  skull.scale.set(1, 0.88, 1.02);
+  const [rx, ry, rz] = [0.27 * 1.05, 0.27 * 0.86, 0.27 * 0.92]; // bán kính đầu theo 3 trục
+  const skull = sphere(0.27, skin, 24, 16);
+  skull.scale.set(rx / 0.27, ry / 0.27, rz / 0.27); // đầu hơi dài, hình nêm
   head.add(skull);
-  for (const s of [-1, 1]) {
-    head.add(at(new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.18, 4), fur), -0.02, 0.21, s * 0.13, s * 0.35, Math.PI / 4, 0)); // tai
-    head.add(at(sphere(0.045, pink, 10, 8), 0.2, -0.07, s * 0.15)); // má hồng
-  }
-  const muzzle = sphere(0.1, white, 14, 10);
-  muzzle.scale.set(0.7, 0.6, 1.2);
-  head.add(at(muzzle, 0.22, -0.08, 0));
-  head.add(at(sphere(0.03, pink, 10, 8), 0.29, -0.03, 0)); // mũi
 
-  // Mắt nhắm (lúc ngủ) và mắt mở (lúc bị chọc)
+  const earGeo = new THREE.ConeGeometry(0.125, 0.32, 16);
+  const earInnerGeo = new THREE.ConeGeometry(0.085, 0.24, 16);
+  for (const s of [-1, 1]) {
+    // Tai to như tai dơi: hình nón dẹt chĩa chếch ra ngoài, lòng tai màu hồng
+    const ear = at(new THREE.Group(), -0.03, 0.31, s * 0.227, s * 0.5, -s * 0.35, 0);
+    const outer = new THREE.Mesh(earGeo, skin);
+    outer.scale.x = 0.38;
+    const inner = at(new THREE.Mesh(earInnerGeo, earPink), 0.028, -0.03, 0);
+    inner.scale.x = 0.3;
+    ear.add(outer, inner);
+    head.add(ear);
+
+    const cheek = sphere(0.1, skin, 14, 10); // gò má cao
+    cheek.scale.set(0.9, 0.75, 0.8);
+    head.add(at(cheek, 0.1, -0.06, s * 0.17));
+    const pad = sphere(0.062, skin, 14, 10); // đệm ria hai bên mõm
+    pad.scale.set(0.8, 0.72, 0.9);
+    head.add(at(pad, 0.235, -0.085, s * 0.048));
+    head.add(at(sphere(0.042, pink, 10, 8), 0.185, -0.06, s * 0.16)); // má hồng
+  }
+  const nose = sphere(0.03, pink, 10, 8);
+  nose.scale.set(0.8, 0.7, 1.1);
+  head.add(at(nose, 0.29, -0.035, 0)); // mũi
+
+  // Nếp nhăn trên trán, nét đặc trưng nhất của mèo Sphynx.
+  // Mỗi nếp là một ống mảnh chạy sát mặt da (toạ độ tính từ hình elip của đầu).
+  for (const [y0, w] of [[0.115, 0.08], [0.15, 0.065], [0.185, 0.045]]) {
+    const pts = [];
+    for (let i = 0; i <= 8; i++) {
+      const z = w * (i / 4 - 1);
+      const y = y0 + 0.012 * Math.cos((z / w) * (Math.PI / 2)); // hơi cong lên ở giữa
+      const x = rx * Math.sqrt(Math.max(0, 1 - (y / ry) ** 2 - (z / rz) ** 2)) + 0.003;
+      pts.push(new THREE.Vector3(x, y, z));
+    }
+    head.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 16, 0.009, 6), crease));
+  }
+
+  // Mắt nhắm (lúc ngủ) và mắt mở to hình quả chanh (lúc bị chọc)
   const eyesClosed = new THREE.Group();
   const eyesOpen = new THREE.Group();
+  const eyeGeo = new THREE.SphereGeometry(0.06, 16, 12);
+  const lidGeo = new THREE.TorusGeometry(0.05, 0.011, 6, 16, Math.PI);
+  const iris = mat('#a6d66b');
   for (const s of [-1, 1]) {
-    const arc = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.012, 6, 14, Math.PI), ink);
-    eyesClosed.add(at(arc, 0.25, 0.05, s * 0.1, 0, Math.PI / 2, Math.PI));
-    eyesOpen.add(at(sphere(0.04, ink, 12, 8), 0.235, 0.04, s * 0.1));
+    const pose = [0.238, 0.045, s * 0.105, 0, -s * 0.5, 0]; // quay mỗi mắt ra ngoài một chút cho ôm theo mặt
+    const open = at(new THREE.Group(), ...pose);
+    const eye = new THREE.Mesh(eyeGeo, iris);
+    eye.scale.set(0.5, 0.72, 1);
+    eye.rotation.x = -s * 0.3; // đuôi mắt xếch lên
+    const pupil = sphere(0.032, ink, 12, 8); // con ngươi giãn to vì giật mình
+    pupil.scale.set(0.4, 1, 0.8);
+    open.add(eye, at(pupil, 0.022, 0, 0), at(sphere(0.011, '#ffffff', 8, 6), 0.033, 0.016, 0.012));
+    eyesOpen.add(open);
+
+    const closed = at(new THREE.Group(), ...pose);
+    closed.add(at(new THREE.Mesh(lidGeo, ink), 0.014, 0.012, 0, -s * 0.3, Math.PI / 2, Math.PI));
+    eyesClosed.add(closed);
   }
   eyesOpen.visible = false;
   head.add(eyesClosed, eyesOpen);
 
-  // Đuôi: một ống cong uốn theo đường cong qua 5 điểm
+  // Đuôi dài, thon dần về chóp như cái roi
   const tailPivot = at(new THREE.Group(), -0.42, 0.12, 0);
   g.add(tailPivot);
-  const pts = [[0, 0, 0], [-0.12, -0.03, 0.25], [0.05, -0.06, 0.52], [0.4, -0.07, 0.6], [0.7, -0.07, 0.48]]
-    .map(([x, y, z]) => new THREE.Vector3(x, y, z));
-  tailPivot.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 32, 0.065, 10), fur));
-  tailPivot.add(at(sphere(0.068, furDark, 12, 8), pts[4].x, pts[4].y, pts[4].z));
+  const tailCurve = new THREE.CatmullRomCurve3(
+    [[0.12, 0.04, -0.02], [0, 0, 0], [-0.14, -0.06, 0.22], [0, -0.095, 0.47], [0.36, -0.11, 0.57], [0.7, -0.115, 0.47], [0.84, -0.11, 0.3]]
+      .map(([x, y, z]) => new THREE.Vector3(x, y, z)),
+  );
+  const [segs, sides] = [48, 10];
+  const tailGeo = new THREE.TubeGeometry(tailCurve, segs, 0.05, sides);
+  // TubeGeometry luôn to đều, nên kéo từng vòng đỉnh lại gần trục để đuôi nhỏ dần
+  const pos = tailGeo.attributes.position;
+  const axis = new THREE.Vector3();
+  const v = new THREE.Vector3();
+  for (let i = 0; i <= segs; i++) {
+    tailCurve.getPointAt(i / segs, axis);
+    const k = 1 - 0.9 * (i / segs); // gốc đuôi giữ nguyên, chóp chỉ còn 1/10
+    for (let j = 0; j <= sides; j++) {
+      const n = i * (sides + 1) + j;
+      v.fromBufferAttribute(pos, n).sub(axis).multiplyScalar(k).add(axis);
+      pos.setXYZ(n, v.x, v.y, v.z);
+    }
+  }
+  tailGeo.computeBoundingSphere();
+  tailPivot.add(new THREE.Mesh(tailGeo, skin));
 
   // Chữ "z" bay lên khi mèo ngủ
   const zTexture = canvasTexture(64, 64, (ctx) => {

@@ -8,7 +8,7 @@ export const labels = {
   guitar: 'Cây đàn · The Band',
   bag: 'Túi hàng · Shopee clone',
   lamp: 'Đèn bàn · Đổi ngày/đêm',
-  cat: 'Mèo Mướp đang ngủ',
+  cat: 'Mèo Sphynx · Đang ngủ',
   plant: 'Cây Monstera · Tưới cây',
 };
 
@@ -46,5 +46,12 @@ export const content = {
 };
 
 // Câu thoại ngẫu nhiên
-export const catLines = ['Meo~', 'Đang ngủ mà…', 'Cho tui ăn đi!', 'Prrr… prrr…', 'Gãi cằm thôi nha'];
+export const catLines = [
+  'Meo~',
+  'Đang ngủ mà…',
+  'Tui không trọc nha, tui là Sphynx!',
+  'Lạnh quá, cho tui cái áo len đi 🥶',
+  'Nắng ấm ghê, đừng kéo rèm nha ☀️',
+  'Prrr… prrr…',
+];
 export const plantLines = ['Mát quá! 💧', 'Cảm ơn nha 🌱', 'Lớn thêm xíu rồi nè!', 'Uống no rồi 💦'];

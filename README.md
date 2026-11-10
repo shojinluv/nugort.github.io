@@ -9,7 +9,7 @@ bấm vào đồ vật để xem các dự án.
 | 🎸 Đàn guitar | Mở dự án **The Band** |
 | 🛍️ Túi hàng | Mở dự án **Shopee clone** |
 | 💡 Đèn bàn | Đổi ngày ↔ đêm |
-| 🐱 Mèo Mướp | Mèo giật mình nói chuyện |
+| 🐱 Mèo Sphynx | Mèo giật mình nói chuyện |
 | 🪴 Cây Monstera | Tưới cây, cây lớn dần |
 
 Một vài chi tiết nhỏ: đồng hồ treo tường chạy theo giờ thật, mở trang sau 6 giờ tối thì phòng tự chuyển sang
