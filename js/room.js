@@ -1,7 +1,7 @@
 // room.js – Dựng "cái vỏ" căn phòng: sàn, tường, cửa sổ, bầu trời, tia nắng,
 // dây đèn trang trí, tranh treo tường và đồng hồ chạy theo giờ thật.
 import * as THREE from 'three';
-import { mat, box, cylinder, sphere, at, canvasTexture, random, decoration } from './helpers.js';
+import { mat, box, cylinder, sphere, at, stick, canvasTexture, random, decoration } from './helpers.js';
 import { floaty } from './space.js';
 
 // Quy ước: 1 đơn vị ≈ 30cm. Mặt sàn nằm ở y = 0, lòng phòng trải từ -5 đến 5 theo trục x và z.
@@ -23,6 +23,7 @@ export function buildRoom(world) {
   buildSunbeam(room, world);
   buildFairyLights(room, world);
   buildPoster(room, world);
+  buildOxScroll(room, world);
   buildSolarPanels(room, world);
   buildThrusters(room, world);
   buildAirlock(room, world);
@@ -79,7 +80,7 @@ function buildFloor(room, world) {
 
 // ---------- Tường ----------
 // Ô kính tròn trên cửa khoang ở tường trái: vị trí dọc tường (z), độ cao (y) và bán kính lỗ khoét
-const HATCH = { z: 4.13, y: 2.55, r: 0.37 };
+export const HATCH = { z: 4.13, y: 2.55, r: 0.37 };
 
 function buildWalls(room, world) {
   const paint = mat('#f7dfcf'); // màu sơn tường
@@ -525,6 +526,282 @@ function buildPoster(room, world) {
   g.add(box(0.05, 1.66, 2.32, '#8a5a3c', 0.02)); // khung tranh (nằm sau tranh)
   g.userData.id = 'poster';
   world.clickables.poster = g;
+  room.add(g);
+}
+
+// ---------- Tranh cuộn "Thập mục ngưu đồ" treo phía trên đầu giường ----------
+// Mười bức chăn trâu của Thiền tông, vẽ kiểu mực tàu trong mười vòng ensō, đọc từ trái qua phải, trên xuống dưới.
+// Cho hợp với căn phòng: người chăn trâu là một chú mèo Sphynx tai to, bức thứ 9 "trở về nguồn cội"
+// là Trái Đất nhìn từ ngoài vũ trụ, bức thứ 10 "thõng tay vào chợ" thì mèo xách túi hàng màu cam.
+const OX_STAGES = ['Tìm trâu', 'Thấy dấu', 'Thấy trâu', 'Bắt trâu', 'Chăn trâu', 'Cưỡi trâu về', 'Quên trâu', 'Quên cả hai', 'Về nguồn', 'Vào chợ'];
+
+function buildOxScroll(room, world) {
+  const INK = '#2b2420';
+  const tex = canvasTexture(512, 1100, (ctx, w, h) => {
+    // Nền lụa viền quanh và tờ giấy dó ở giữa
+    ctx.fillStyle = '#3f5a63';
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
+    for (let y = 8; y < h; y += 26) for (let x = (y / 26) % 2 ? 8 : 21; x < w; x += 26) ctx.fillRect(x, y, 5, 5); // hoa văn gấm
+    ctx.fillStyle = '#c9a15f';
+    ctx.fillRect(22, 58, w - 44, h - 116);
+    const paper = ctx.createLinearGradient(0, 0, w, h);
+    paper.addColorStop(0, '#f6ecd6');
+    paper.addColorStop(1, '#efe0c2');
+    ctx.fillStyle = paper;
+    ctx.fillRect(28, 64, w - 56, h - 128);
+
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    const ink = (alpha = 0.92) => `rgba(43, 36, 32, ${alpha})`;
+
+    // Vòng ensō: một nét bút tròn, chỗ đậm chỗ nhạt, hở một khe nhỏ
+    const enso = (start) => {
+      for (let i = 0; i < 90; i++) {
+        const a = start + (i / 90) * 5.95;
+        const b = start + ((i + 1.2) / 90) * 5.95;
+        ctx.beginPath();
+        ctx.arc(0, 0, 72, a, b);
+        ctx.lineWidth = 3 + 6 * Math.sin((i / 90) * Math.PI) ** 0.6;
+        ctx.strokeStyle = ink(0.55 + 0.4 * Math.sin((i / 90) * Math.PI));
+        ctx.stroke();
+      }
+    };
+    const ground = (y = 42) => {
+      ctx.beginPath();
+      ctx.moveTo(-62, y);
+      ctx.quadraticCurveTo(0, y - 5, 62, y + 2);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = ink(0.45);
+      ctx.stroke();
+    };
+    // Mèo Sphynx ngồi: thân, đầu, hai tai to như tai dơi và cái đuôi cong
+    const cat = (x, y, s = 1, face = 1) => {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(s * face, s);
+      ctx.fillStyle = INK;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 9, 13, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(3, -17, 7.5, 0, Math.PI * 2);
+      ctx.fill();
+      for (const dx of [-3, 8]) {
+        ctx.beginPath();
+        ctx.moveTo(dx - 4, -21);
+        ctx.lineTo(dx + (dx < 0 ? -5 : 5), -36);
+        ctx.lineTo(dx + 4, -22);
+        ctx.fill();
+      }
+      ctx.beginPath();
+      ctx.moveTo(-7, 9);
+      ctx.quadraticCurveTo(-24, 10, -19, -8);
+      ctx.lineWidth = 2.6;
+      ctx.strokeStyle = INK;
+      ctx.stroke();
+      ctx.restore();
+    };
+    // Con trâu: thân, đầu, cặp sừng cong, bốn chân và đuôi
+    const ox = (x, y, s = 1, face = 1, tilt = 0) => {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(tilt);
+      ctx.scale(s * face, s);
+      ctx.fillStyle = INK;
+      ctx.strokeStyle = INK;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 25, 14, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(26, -7, 10, 8, 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.lineWidth = 3;
+      for (const d of [-1, 1]) { // sừng
+        ctx.beginPath();
+        ctx.moveTo(24 + d * 4, -13);
+        ctx.quadraticCurveTo(24 + d * 15, -20, 24 + d * 11, -30);
+        ctx.stroke();
+      }
+      ctx.lineWidth = 4.5;
+      for (const lx of [-17, -8, 9, 17]) { // chân
+        ctx.beginPath();
+        ctx.moveTo(lx, 8);
+        ctx.lineTo(lx, 24);
+        ctx.stroke();
+      }
+      ctx.lineWidth = 2.4;
+      ctx.beginPath(); // đuôi
+      ctx.moveTo(-24, -4);
+      ctx.quadraticCurveTo(-36, 0, -33, 15);
+      ctx.stroke();
+      ctx.restore();
+    };
+    const rope = (x1, y1, x2, y2, sag) => {
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.quadraticCurveTo((x1 + x2) / 2, (y1 + y2) / 2 + sag, x2, y2);
+      ctx.lineWidth = 1.8;
+      ctx.strokeStyle = '#b3401f';
+      ctx.stroke();
+    };
+    const dots = (list, r = 1.6, color = ink(0.7)) => {
+      ctx.fillStyle = color;
+      for (const [x, y] of list) {
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    };
+
+    const scenes = [
+      () => { // 1. Tìm trâu: mèo ngơ ngác giữa núi rừng, chưa thấy trâu đâu
+        ctx.beginPath();
+        ctx.moveTo(-60, 10);
+        ctx.lineTo(-28, -30);
+        ctx.lineTo(-6, -4);
+        ctx.lineTo(22, -42);
+        ctx.lineTo(60, 8);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = ink(0.3);
+        ctx.stroke();
+        ground();
+        cat(-18, 28);
+      },
+      () => { // 2. Thấy dấu: những vết chân trâu dẫn đi xa
+        ground();
+        cat(-42, 28);
+        ctx.fillStyle = ink(0.75);
+        [[-12, 34], [4, 26], [20, 20], [34, 10], [46, 2]].forEach(([x, y], i) => {
+          for (const d of [-2.6, 2.6]) {
+            ctx.beginPath();
+            ctx.ellipse(x + d, y, 2.2 - i * 0.2, 3.6 - i * 0.3, 0.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        });
+      },
+      () => { // 3. Thấy trâu: trâu thò nửa mình ra sau bụi cây
+        ground();
+        ox(44, 22, 0.95, -1);
+        ctx.fillStyle = '#5d7a5f';
+        for (const [x, y, r] of [[52, 18, 20], [38, 4, 15], [60, -2, 14]]) {
+          ctx.beginPath();
+          ctx.arc(x, y, r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        cat(-42, 28);
+      },
+      () => { // 4. Bắt trâu: dây căng, trâu còn giằng lại
+        ground();
+        ox(28, 18, 0.95, 1, -0.2);
+        cat(-46, 28);
+        rope(-38, 16, 10, 8, 0);
+      },
+      () => { // 5. Chăn trâu: trâu đã thuần, dây chùng
+        ground();
+        ox(26, 20, 0.95, -1);
+        cat(-46, 28);
+        rope(-38, 16, 2, 12, 16);
+      },
+      () => { // 6. Cưỡi trâu về nhà: ngồi trên lưng trâu thổi sáo
+        ground();
+        ox(0, 20, 1.05, 1);
+        cat(-4, -4, 0.8);
+        ctx.beginPath();
+        ctx.moveTo(4, -17);
+        ctx.lineTo(24, -24);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#b3401f';
+        ctx.stroke();
+        ctx.fillStyle = ink(0.6);
+        ctx.font = '20px serif';
+        ctx.fillText('♪', 32, -36);
+        ctx.fillText('♫', 46, -18);
+      },
+      () => { // 7. Quên trâu còn người: một mình ngồi ngắm trăng
+        ground();
+        cat(-14, 28);
+        ctx.beginPath();
+        ctx.arc(30, -28, 13, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(244, 197, 66, 0.55)';
+        ctx.fill();
+      },
+      () => {}, // 8. Người trâu đều quên: vòng tròn trống không
+      () => { // 9. Trở về nguồn cội: Trái Đất nhìn từ căn phòng ngoài vũ trụ
+        ctx.beginPath();
+        ctx.arc(0, 6, 30, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(79, 147, 179, 0.75)';
+        ctx.fill();
+        ctx.save();
+        ctx.clip();
+        ctx.fillStyle = 'rgba(93, 158, 111, 0.9)';
+        for (const [x, y, rx, ry, r] of [[-12, -4, 13, 9, 0.4], [14, 14, 11, 15, -0.3], [-18, 26, 9, 6, 0]]) {
+          ctx.beginPath();
+          ctx.ellipse(x, y, rx, ry, r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+        dots([[-46, -30], [40, -40], [52, 4], [-52, 20], [-20, -50], [14, -56], [44, 38], [-36, 46]]);
+      },
+      () => { // 10. Thõng tay vào chợ: mèo xách túi hàng đi giữa đời thường
+        ground();
+        cat(-14, 28);
+        ctx.fillStyle = '#ee5a36';
+        ctx.fillRect(10, 20, 20, 22);
+        ctx.beginPath();
+        ctx.arc(20, 20, 6, Math.PI, 0);
+        ctx.lineWidth = 2.2;
+        ctx.strokeStyle = '#d94a28';
+        ctx.stroke();
+        dots([[-44, -26], [36, -34], [48, -6], [-28, -46]], 1.5, 'rgba(179, 64, 31, 0.6)');
+      },
+    ];
+
+    scenes.forEach((draw, i) => {
+      const cx = i % 2 ? 372 : 140;
+      const cy = 160 + Math.floor(i / 2) * 186;
+      ctx.save();
+      ctx.translate(cx, cy);
+      enso(-1.3 + i * 0.7);
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(0, 0, 67, 0, Math.PI * 2);
+      ctx.clip(); // cảnh vẽ không tràn ra ngoài vòng tròn
+      draw();
+      ctx.restore();
+      ctx.fillStyle = ink(0.7);
+      ctx.font = '24px "Patrick Hand", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(`${i + 1} · ${OX_STAGES[i]}`, 0, 101);
+      ctx.restore();
+    });
+
+    // Con dấu đỏ ở góc dưới
+    ctx.fillStyle = '#c0392b';
+    ctx.fillRect(w - 78, h - 112, 30, 30);
+    ctx.fillStyle = '#f6ecd6';
+    ctx.font = '800 20px "Be Vietnam Pro", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('牛', w - 63, h - 90);
+  });
+
+  // Gom tranh, hai trục gỗ và dây treo vào một nhóm có id, để rê chuột và bấm vào được như bức tranh bên cạnh
+  const W = 1.3;
+  const H = (W * 1100) / 512;
+  const g = at(new THREE.Group(), -4.975, 3.42, -1.05);
+  const sheet = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95 }));
+  g.add(at(sheet, 0.012, 0, 0, 0, Math.PI / 2, 0));
+  const wood = '#6b4630';
+  for (const y of [H / 2, -H / 2]) {
+    g.add(at(cylinder(0.035, 0.035, W + 0.16, wood, 12), 0.03, y, 0, Math.PI / 2)); // trục gỗ trên và dưới
+    for (const z of [-1, 1]) g.add(at(cylinder(0.05, 0.05, 0.05, '#3a2a22', 12), 0.03, y, z * (W / 2 + 0.1), Math.PI / 2));
+  }
+  const nail = new THREE.Vector3(0.01, H / 2 + 0.22, 0); // đinh treo
+  g.add(stick(new THREE.Vector3(0.02, H / 2, -0.4), nail, 0.008, '#3a2a22'));
+  g.add(stick(new THREE.Vector3(0.02, H / 2, 0.4), nail, 0.008, '#3a2a22'));
+  g.add(at(sphere(0.03, '#c9a15f', 10, 8), 0.015, H / 2 + 0.22, 0));
+  g.userData.id = 'scroll';
+  world.clickables.scroll = g;
   room.add(g);
 }
 

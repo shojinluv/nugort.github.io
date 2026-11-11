@@ -11,6 +11,7 @@ export const labels = {
   cat: 'Mèo Sphynx · Đang ngủ',
   plant: 'Cây Monstera · Tưới cây',
   poster: 'Bức tranh · Di sản của Trâm Anh',
+  scroll: 'Tranh cuộn · Thập mục ngưu đồ',
 };
 
 // Tên các thiên thể (hiện khi rê chuột lúc ở ngoài vũ trụ) và câu giới thiệu khi bấm vào
@@ -76,6 +77,18 @@ export const content = {
     ],
     links: [{ text: 'Xem bản đang làm', href: 'learing/f8/shopee-clone/index.html' }],
   },
+  scroll: {
+    tag: 'Tranh cuộn · Thiền',
+    title: 'Thập mục ngưu đồ',
+    body: [
+      'Mười bức tranh chăn trâu của Thiền tông: con trâu là cái tâm, người chăn là kẻ đi tìm lại chính mình. Ở căn phòng này, người chăn trâu là một chú mèo Sphynx.',
+      '1. Tìm trâu · 2. Thấy dấu · 3. Thấy trâu · 4. Bắt trâu · 5. Chăn trâu',
+      '6. Cưỡi trâu về nhà · 7. Quên trâu còn người · 8. Người trâu đều quên',
+      '9. Trở về nguồn cội: ở đây là Trái Đất nhìn từ ngoài cửa sổ con tàu.',
+      '10. Thõng tay vào chợ: xong hết rồi thì xách túi đi chợ như mọi người thôi 🛍️',
+    ],
+    links: [{ text: 'Ghé Chợ Nugỏrt', href: 'learing/f8/shopee-clone/index.html' }],
+  },
   // locked: true → nội dung bị mây mù che phủ, ở giữa có ổ khoá (vùng cấm).
   // Mấy dòng body bên dưới chỉ là chữ giữ chỗ cho có hình dáng sau lớp mây, đừng viết bí mật thật vào đây:
   // ai mở mã nguồn trang cũng đọc được.
@@ -109,5 +122,13 @@ export const catSpaceLines = [
   'Mũ có cả chỗ cho tai nè!',
   'Houston, tui đói rồi 🐟',
   'Meo~ không trọng lực!',
+];
+// Mèo nói khi bị ai đó soi qua ô kính cửa khoang
+export const catPeekLines = [
+  'Nhìn gì mà nhìn! 😾',
+  'Ê! Gõ cửa trước đã chứ!',
+  'Cấm soi mông phi hành gia!',
+  'Biến thái hả?! Tui mách chủ đó 😾',
+  'Ô kính để ngắm sao, không phải ngắm tui!',
 ];
 export const plantSpaceLines = ['Nước tròn vo kìa! 💧', 'Uống kiểu phi hành gia 🫧', 'Ơ, giọt nước bay mất rồi!'];
