@@ -45,6 +45,18 @@ html {
     }
 }
 
+/* Lối về "tàu mẹ" (căn phòng nhỏ): màu xanh ngọc cho khác các mục còn lại */
+#nav > li:not(:hover) > a.nav-mothership {
+    color: #80CBC4;
+}
+
+/* Tablet hẹp: thêm một mục nên menu hơi chật, thu bớt khoảng đệm cho khỏi rớt dòng */
+@media (min-width: 740px) and (max-width: 859px) {
+    #nav > li > a {
+        padding: 0px 16px;
+    }
+}
+
 /* ---------- Slider: chữ trồi nhẹ lên khi vừa vào trang ---------- */
 #slider .slider-text-title,
 #slider .slider-text-dsc {
