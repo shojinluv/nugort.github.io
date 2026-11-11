@@ -639,3 +639,11 @@ display: inline-block;
     color: #009688;
     min-height: 1.4em;
 }
+
+/* Màn hình rộng: dùng bản ảnh đã phóng to gấp đôi (2400x1200) cho đỡ mờ.
+   Màn hình nhỏ vẫn tải ảnh gốc nhẹ hơn ở trên. */
+@media (min-width: 1024px) {
+    #slider {
+        background-image: url('../img/slider-1/chicago-2x.jpg');
+    }
+}
