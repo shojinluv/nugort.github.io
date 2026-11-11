@@ -41,6 +41,42 @@ function inView(x, y, d) {
 }
 
 // ======================================================================
+// Đường bay lên từ mặt đất
+// ======================================================================
+// Căn phòng đứng yên, còn Trái Đất (cùng hòn đảo nhỏ, xem island.js) thì lùi xa dần.
+// Lúc bắt đầu, mặt đất nằm ngay dưới gầm sàn như bệ phóng; bay xong thì Trái Đất về chỗ quen thuộc ở góc dưới bên trái.
+// Trái Đất ngoài vũ trụ được thu nhỏ cho gọn khung hình, nên lúc còn ở mặt đất phải phóng to lên GROUND_SCALE lần,
+// không thì căn phòng trông to bằng cả một châu lục. Bay càng cao thì thu dần về cỡ bình thường.
+const EARTH_R = 40;
+const EARTH_HOME = inView(-0.6, -1.25, 135);
+export const PAD = new THREE.Vector3(-0.15, -0.5, -0.15); // tâm mặt đáy sàn, cũng là tâm mặt trên hòn đảo
+export const GROUND_SCALE = 5;
+export const LAUNCH_H0 = 1.2; // độ cao của sàn so với mặt biển lúc còn trên bệ phóng
+const AWAY = EARTH_HOME.clone().sub(PAD);
+const LAUNCH_H1 = AWAY.length() - EARTH_R; // độ cao khi đã lên tới quỹ đạo
+AWAY.normalize();
+const DOWN = new THREE.Vector3(0, -1, 0);
+const TURN = new THREE.Quaternion().setFromUnitVectors(DOWN, AWAY);
+
+export const newLaunchPose = () => ({ lift: 0, h: LAUNCH_H0, k: GROUND_SCALE, q: new THREE.Quaternion(), dir: DOWN.clone() });
+/**
+ * Tư thế của mặt đất ở thời điểm p (= world.spaceProgress):
+ *  lift: 0 → 1, đã bay được bao nhiêu (bắt đầu rời bệ phóng từ p = 0,1)
+ *  h:    độ cao của đáy sàn so với mặt đất, tăng theo cấp số nhân: lúc đầu nhích chậm, càng lên càng vọt
+ *  k:    Trái Đất đang được phóng to bao nhiêu lần
+ *  q, dir: mặt đất đang nằm theo hướng nào so với căn phòng (lúc đầu ngay bên dưới, lúc cuối lệch sang góc trái)
+ */
+export function launchPose(p, out) {
+  const lift = smooth(clamp01((p - 0.1) / 0.9));
+  out.lift = lift;
+  out.h = LAUNCH_H0 * (LAUNCH_H1 / LAUNCH_H0) ** lift;
+  out.k = GROUND_SCALE ** (1 - lift);
+  out.q.identity().slerp(TURN, lift);
+  out.dir.copy(DOWN).applyQuaternion(out.q);
+  return out;
+}
+
+// ======================================================================
 // Đồ đạc trôi lơ lửng
 // ======================================================================
 
@@ -145,21 +181,7 @@ export function buildSpace(world) {
   skyTarget(sun.group, 'sun', 7);
   planets.list.forEach((p) => skyTarget(p.group, p.id, 2.6));
 
-  // Đường bay lên: căn phòng đứng yên, Trái Đất thì lùi xa dần.
-  // Lúc bắt đầu, Trái Đất nằm ngay dưới gầm sàn như bệ phóng; bay xong thì về chỗ quen thuộc ở góc dưới bên trái.
-  // Trái Đất ngoài vũ trụ được thu nhỏ cho gọn khung hình, nên lúc còn ở mặt đất phải phóng to lên GROUND_SCALE lần,
-  // không thì căn phòng trông to bằng cả một châu lục. Bay càng cao thì thu dần về cỡ bình thường.
-  const GROUND_SCALE = 5;
-  const PAD = new THREE.Vector3(-0.15, -0.5, -0.15); // tâm mặt đáy sàn
-  const earthHome = earth.group.position.clone();
-  const awayDir = earthHome.clone().sub(PAD);
-  const H1 = awayDir.length() - earth.R; // độ cao khi đã lên tới quỹ đạo
-  const H0 = 1.2;                          // độ cao lúc còn trên bệ phóng: vừa đủ cho các ống phụt
-  awayDir.normalize();
-  const downDir = new THREE.Vector3(0, -1, 0);
-  const turn = new THREE.Quaternion().setFromUnitVectors(downDir, awayDir);
-  const q = new THREE.Quaternion();
-  const dir = new THREE.Vector3();
+  const pose = newLaunchPose();
 
   world.updaters.push((t, dt) => {
     const p = world.spaceProgress;
@@ -168,17 +190,13 @@ export function buildSpace(world) {
       // Ba nhịp của chuyến bay: Trái Đất hiện ra dưới chân (p 0 → 0,1), rời bệ phóng và lên cao dần,
       // ra khỏi bầu khí quyển thì sao trời mới hiện (p 0,4 → 0,85). Hạ cánh thì chạy ngược lại.
       const ground = smooth(clamp01(p / 0.1));
-      const lift = smooth(clamp01((p - 0.1) / 0.9));
       const sky = smooth(clamp01((p - 0.4) / 0.45));
 
-      // Độ cao tăng theo cấp số nhân: lúc đầu nhích chậm, càng lên càng vọt nhanh như tên lửa thật
-      const h = H0 * (H1 / H0) ** lift;
-      const k = GROUND_SCALE ** (1 - lift);
+      const { h, k, dir } = launchPose(p, pose);
       earth.group.scale.setScalar(k);
       // Tầng mây luôn nằm sát mặt đất một khoảng cố định, không phình theo k (để mây không trồi lên xuyên qua sàn)
       earth.clouds.scale.setScalar((1 + 0.012 / k) / 1.012);
-      dir.copy(downDir).applyQuaternion(q.identity().slerp(turn, lift));
-      earth.group.position.copy(PAD).addScaledVector(dir, earth.R * k + h);
+      earth.group.position.copy(PAD).addScaledVector(dir, EARTH_R * k + h);
 
       // Sao lấp lánh: mỗi lớp sao sáng tối lệch nhịp nhau
       stars.layers.forEach((m, i) => {
@@ -244,9 +262,9 @@ function buildStars(group) {
 
 // ---------- Trái Đất: quả cầu lớn ở phía dưới, có mây, quầng khí quyển và đèn thành phố ----------
 function buildEarth(group) {
-  const R = 40;
+  const R = EARTH_R;
   const earth = new THREE.Group();
-  earth.position.copy(inView(-0.6, -1.25, 135));
+  earth.position.copy(EARTH_HOME);
   earth.rotation.set(0.3, 0, 0.35); // trục Trái Đất hơi nghiêng
   group.add(earth);
 

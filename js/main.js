@@ -5,6 +5,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { buildRoom, SUN_DIR, WALL_H, HATCH } from './room.js';
 import { buildFurniture } from './furniture.js';
 import { buildSpace } from './space.js';
+import { buildIsland } from './island.js';
 import {
   content, labels, spaceLabels, skyLabels, skyFacts, catLines, catSpaceLines, catPeekLines, plantLines, plantSpaceLines,
 } from './content.js';
@@ -112,6 +113,7 @@ const world = {
 buildRoom(world);
 buildFurniture(world);
 buildSpace(world);
+buildIsland(world); // hòn đảo cổ tích dưới chân căn phòng (bối cảnh Trái Đất)
 
 // Bật đổ bóng cho mọi vật thể, và lập danh sách vật thể có thể "bắn tia" chuột trúng
 const pickables = [];
@@ -479,7 +481,7 @@ function resize() {
   renderer.setSize(w, h);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  controls.maxDistance = homeRadius() * 1.35;
+  controls.maxDistance = homeRadius() * 1.75; // lùi xa được đủ để ngắm trọn hòn đảo lơ lửng
 }
 window.addEventListener('resize', resize);
 resize();

@@ -59,24 +59,7 @@ function buildFloor(room, world) {
   const floor = new THREE.Mesh(new THREE.BoxGeometry(10.3, 0.5, 10.3), [side, side, top, side, side, side]);
   floor.position.set(-0.15, -0.25, -0.15);
   room.add(floor);
-
-  // Vệt bóng mờ bên dưới, cho cảm giác căn phòng đang lơ lửng như một hòn đảo nhỏ
-  const blob = canvasTexture(256, 256, (ctx, w, h) => {
-    const g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
-    g.addColorStop(0, 'rgba(60, 30, 20, 0.35)');
-    g.addColorStop(1, 'rgba(60, 30, 20, 0)');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, w, h);
-  });
-  const shadowMat = new THREE.MeshBasicMaterial({ map: blob, transparent: true, depthWrite: false });
-  const shadow = new THREE.Mesh(new THREE.PlaneGeometry(22, 22), shadowMat);
-  room.add(decoration(at(shadow, 0, -0.9, 0, -Math.PI / 2)));
-  // Cất cánh: vệt bóng mờ dần khi căn phòng rời khỏi mặt đất (ngoài vũ trụ không có gì để đổ bóng xuống)
-  world.updaters.push(() => {
-    const fade = THREE.MathUtils.smoothstep(world.spaceProgress, 0.1, 0.35);
-    shadowMat.opacity = 1 - fade;
-    shadow.visible = fade < 0.999;
-  });
+  // Bên dưới sàn là hòn đảo cỏ lơ lửng (xem island.js)
 }
 
 // ---------- Tường ----------
