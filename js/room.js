@@ -876,7 +876,9 @@ function buildSolarPanels(room, world) {
 
 // ---------- Động cơ đẩy dưới gầm sàn ----------
 // Chỉ thò ra khi căn phòng bay ra vũ trụ: một tấm vỏ kim loại ốp đáy sàn và bốn ống phụt ở bốn góc.
-// Lửa xanh cháy liu riu lúc trôi, bùng to lúc đang cất cánh hoặc hạ cánh.
+// Đúng như tàu thật: chỉ đốt mạnh lúc cất cánh và hạ cánh. Lên tới quỹ đạo thì tàu trôi theo quán tính,
+// động cơ tắt hẳn, thỉnh thoảng một hai ống phụt một nhịp ngắn để chỉnh hướng.
+// Loa phụt còn nóng sau mỗi lần đốt nên vẫn ửng sáng rồi nguội dần.
 function buildThrusters(room, world) {
   const hull = canvasTexture(512, 512, (ctx, w, h) => {
     ctx.fillStyle = '#596275';
@@ -916,13 +918,16 @@ function buildThrusters(room, world) {
   [[-3.5, -3.5], [3.5, -3.5], [-3.5, 3.5], [3.5, 3.5]].forEach(([x, z], i) => {
     const engine = at(new THREE.Group(), x, 0, z);
     engine.add(at(cylinder(0.36, 0.36, 0.16, '#8a93a8'), 0, -0.18, 0)); // đế gắn động cơ
-    engine.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.52, 0.7, 28, 1, true), bellMat), 0, -0.6, 0)); // loa phụt
-    engine.add(decoration(at(new THREE.Mesh(new THREE.CircleGeometry(0.27, 24), glowMat), 0, -0.27, 0, Math.PI / 2))); // họng lửa sáng
+    // Mỗi ống một loa phụt và họng lửa riêng, để ống nào đang phụt (hay còn nóng) thì chỉ ống đó sáng
+    const bell = bellMat.clone();
+    engine.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.52, 0.7, 28, 1, true), bell), 0, -0.6, 0)); // loa phụt
+    const throat = glowMat.clone();
+    engine.add(decoration(at(new THREE.Mesh(new THREE.CircleGeometry(0.27, 24), throat), 0, -0.27, 0, Math.PI / 2))); // họng lửa sáng
     const outer = decoration(at(new THREE.Mesh(outerGeo, outerMat), 0, -0.4, 0));
     const core = decoration(at(new THREE.Mesh(coreGeo, coreMat), 0, -0.4, 0));
     engine.add(outer, core);
     rig.add(engine);
-    flames.push({ outer, core, phase: i * 1.7 });
+    flames.push({ outer, core, throat, bell, heat: 0, phase: i * 1.7 });
   });
   // Gầm sàn không được Mặt Trời chiếu tới, nên lửa động cơ tự hắt ánh xanh lên vỏ tàu
   const glow = new THREE.PointLight('#6fb4ff', 0, 11, 1.4);
@@ -930,25 +935,56 @@ function buildThrusters(room, world) {
   rig.traverse((o) => { o.userData.noPick = true; });
   room.add(rig);
 
-  world.updaters.push((t) => {
+  // Lịch phụt chỉnh hướng khi đang trôi trên quỹ đạo: cứ mỗi PULSE_GAP giây có một lượt.
+  // Lượt nào cũng có một ống phụt, cách một lượt thì thêm ống chéo đối diện phụt cùng (để xoay tàu),
+  // và cách hai lượt thì phụt hai nhịp liền nhau.
+  const PULSE_GAP = 7;
+  const PUFF = 0.4; // một nhịp phụt dài bao nhiêu giây
+  const puff = (u) => (u > 0 && u < PUFF ? Math.sin((Math.PI * u) / PUFF) : 0);
+  const pulseOf = (i, t) => {
+    const k = Math.floor(t / PULSE_GAP);
+    const u = t - k * PULSE_GAP;
+    const first = (k * 3) % 4;
+    const fires = i === first || (k % 2 === 1 && i === 3 - first);
+    if (!fires) return 0;
+    return Math.max(puff(u), k % 3 === 0 ? puff(u - 0.6) : 0);
+  };
+  world.updaters.push((t, dt) => {
     const s = world.space;
     rig.visible = s > 0.02;
     if (!rig.visible) return;
     rig.scale.y = Math.max(s, 0.001); // thò dần ra từ gầm sàn
-    // Đang trên đường bay lên (hoặc đáp xuống) thì đẩy mạnh, tới nơi rồi chỉ giữ lửa nhỏ
-    const boost = Math.sin(Math.PI * world.spaceProgress);
-    const power = 0.75 + 1.1 * boost;
-    hullMat.emissiveIntensity = s * (0.22 + 0.2 * boost);
-    bellMat.emissiveIntensity = s * (0.5 + 0.5 * boost);
-    glow.intensity = s * (14 + 30 * boost);
+
+    // Đốt chính: chỉ trong lúc cất cánh/hạ cánh, mạnh gần hết hành trình rồi tắt dần khi tới nơi
+    const p = world.spaceProgress;
+    const main = p > 0 && p < 1 ? Math.min(1, 2.5 * Math.sin(Math.PI * p)) : 0;
+    // Phụt chỉnh hướng: chỉ khi đã nằm yên trên quỹ đạo
+    const coasting = p >= 1 && !world.reduceMotion;
+    let pulseMax = 0;
+
+    flames.forEach((f, i) => {
+      const { outer, core, throat, bell, phase } = f;
+      const pulse = coasting ? pulseOf(i, t) : 0;
+      pulseMax = Math.max(pulseMax, pulse);
+      // Độ nóng của loa phụt: bừng lên khi đốt, nguội dần trong khoảng 5 giây
+      f.heat = Math.max(Math.max(main, 0.6 * pulse), f.heat - dt * 0.2);
+      bell.emissiveIntensity = s * 0.9 * f.heat;
+      const len = Math.max(1.85 * main, 0.5 * pulse); // lửa đốt chính dài, nhịp chỉnh hướng ngắn và mảnh
+      const thin = main > pulse ? 1 : 0.6;
+      const on = len > 0.01;
+      outer.visible = core.visible = on;
+      throat.opacity = s * Math.min(1, Math.max(main, pulse) * 1.3);
+      if (!on) return;
+      const flicker = world.reduceMotion ? 1 : 1 + 0.12 * Math.sin(t * 23 + phase) + 0.06 * Math.sin(t * 41 + phase * 2);
+      outer.scale.set(thin, len * flicker, thin);
+      core.scale.set(thin, len * (2 - flicker), thin);
+    });
+
     outerMat.opacity = 0.5 * s;
     coreMat.opacity = 0.85 * s;
-    glowMat.opacity = s;
-    flames.forEach(({ outer, core, phase }) => {
-      const flicker = world.reduceMotion ? 1 : 1 + 0.12 * Math.sin(t * 23 + phase) + 0.06 * Math.sin(t * 41 + phase * 2);
-      outer.scale.set(1, power * flicker, 1);
-      core.scale.set(1, power * (2 - flicker), 1);
-    });
+    // Gầm sàn: chỉ còn le lói khi động cơ tắt, sáng bừng lên khi đốt chính, nhịp chỉnh hướng thì chỉ hắt nhẹ
+    hullMat.emissiveIntensity = s * (0.17 + 0.28 * main + 0.05 * pulseMax);
+    glow.intensity = s * (44 * main + 5 * pulseMax);
   });
 }
 
