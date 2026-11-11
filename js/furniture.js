@@ -605,19 +605,30 @@ function buildCat(world) {
   let jump = 0;
   let awake = 0;
   let flip = 0;
+  let lookAt = null; // điểm mèo đang quay mặt về (khi bị soi qua ô kính), null là nằm như bình thường
   world.cat = {
     poke() {
       awake = 2.2;
       if (world.space > 0.5) flip = 1; // ngoài vũ trụ không nhảy được, nên lộn nhào một vòng
       else jump = 1;
     },
+    stare(point) {
+      lookAt = point;
+    },
   };
-  const yaw = g.rotation.y;
+  const restYaw = g.rotation.y;
+  let yaw = restYaw;
   const pivot = new THREE.Vector3(0.15, 0.28, 0); // tâm thân mèo: lộn nhào quanh điểm này
   let shiftX = 0;
   let shiftZ = 0;
   world.updaters.push((t, dt) => {
     const calm = world.reduceMotion ? 0 : 1;
+    // Bị soi thì xoay cả người cho mặt hướng ra ô kính (đầu mèo nằm ở phía +x của nó), hết bị soi thì quay về
+    const wantYaw = lookAt ? Math.atan2(g.position.z - lookAt.z, lookAt.x - g.position.x) : restYaw;
+    const nextYaw = yaw + (wantYaw - yaw) * Math.min(1, dt * 5);
+    g.rotation.y += nextYaw - yaw; // chỉ cộng phần chênh lệch, giống cách dời vị trí bên dưới
+    yaw = nextYaw;
+    if (lookAt) awake = Math.max(awake, 0.4); // mở mắt lườm
     body.scale.y = 1 + Math.sin(t * 2.2) * 0.035;      // thở
 
     // Ngoài vũ trụ: mặc đồ phi hành gia, bay lơ lửng và lắc lư chầm chậm

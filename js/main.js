@@ -2,11 +2,11 @@
 // xử lý chuột/chạm, chuyển ngày ↔ đêm, bay ra vũ trụ và vòng lặp vẽ hình.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { buildRoom, SUN_DIR, WALL_H } from './room.js';
+import { buildRoom, SUN_DIR, WALL_H, HATCH } from './room.js';
 import { buildFurniture } from './furniture.js';
 import { buildSpace } from './space.js';
 import {
-  content, labels, spaceLabels, skyLabels, skyFacts, catLines, catSpaceLines, plantLines, plantSpaceLines,
+  content, labels, spaceLabels, skyLabels, skyFacts, catLines, catSpaceLines, catPeekLines, plantLines, plantSpaceLines,
 } from './content.js';
 
 const $ = (selector) => document.querySelector(selector);
@@ -336,6 +336,35 @@ function popAt(point, text) {
   el.addEventListener('animationend', () => el.remove());
 }
 const pickOne = (list) => list[Math.floor(Math.random() * list.length)];
+
+// ===== 10b. Mèo bắt quả tang ai soi qua ô kính cửa khoang =====
+// Camera đứng ngoài tường trái, và đường nhìn từ camera tới mèo chui lọt qua lỗ ô kính
+// thì coi như đang soi. Soi quá nửa giây là mèo quay mặt ra cửa và lên tiếng.
+const peekPoint = new THREE.Vector3();
+let peekTime = 0;
+let peekCooldown = 0;
+world.updaters.push((t, dt) => {
+  peekCooldown = Math.max(0, peekCooldown - dt);
+  const cat = world.clickables.cat;
+  const eye = camera.position;
+  let peeking = false;
+  if (world.space > 0.95 && eye.x < -5.6) {
+    peekPoint.set(cat.position.x, cat.position.y + 0.3, cat.position.z);
+    const k = (-5.15 - eye.x) / (peekPoint.x - eye.x); // chỗ đường nhìn cắt qua giữa bề dày tường
+    const y = eye.y + (peekPoint.y - eye.y) * k;
+    const z = eye.z + (peekPoint.z - eye.z) * k;
+    const throughHatch = Math.hypot(y - HATCH.y, z - HATCH.z) < HATCH.r * 0.9;
+    peekPoint.project(camera); // mèo có đang nằm trong khung hình không
+    peeking = throughHatch && Math.abs(peekPoint.x) < 1 && Math.abs(peekPoint.y) < 1 && peekPoint.z < 1;
+  }
+  peekTime = peeking ? peekTime + dt : 0;
+  const caught = peekTime > 0.5;
+  world.cat.stare(caught ? { x: -5.15, z: HATCH.z } : null);
+  if (caught && peekCooldown === 0) {
+    popText(cat, pickOne(catPeekLines));
+    peekCooldown = 5;
+  }
+});
 
 // ===== 11. Đếm số đồ vật đã khám phá =====
 const allIds = Object.keys(world.clickables);
