@@ -15,6 +15,14 @@ bấm vào đồ vật để xem các dự án.
 Một vài chi tiết nhỏ: đồng hồ treo tường chạy theo giờ thật, mở trang sau 6 giờ tối thì phòng tự chuyển sang
 buổi tối, và có bộ đếm xem bạn đã khám phá hết đồ vật chưa.
 
+**🚀 Chế độ Vũ trụ:** bấm nút **Vũ trụ** ở góc trên để cả căn phòng bay ra ngoài quỹ đạo. Xung quanh là sao,
+Trái Đất và Mặt Trăng, thỉnh thoảng có sao băng; đồ đạc trôi lơ lửng; mèo mặc đồ phi hành gia (mũ có hai tai
+mèo, ăng-ten nhấp nháy, ba lô dưỡng khí) và lộn nhào khi bị chọc; tưới cây thì nước tụ thành giọt tròn bay
+khắp phòng. Vì ngoài vũ trụ là chân không nên không còn vệt nắng, chỉ còn mảng nắng rọi trên sàn.
+Ngoài vũ trụ còn có Dải Ngân Hà vắt ngang trời, Mặt Trời nằm đúng hướng nắng chiếu vào cửa sổ, và 7 hành tinh
+còn lại là những chấm sáng trôi chậm dọc hoàng đạo (rê chuột để xem tên, bấm vào để đọc một câu giới thiệu).
+Lúc này camera xoay được 360° quanh căn phòng. Bấm **Hạ cánh** để về lại như cũ.
+
 ## Chạy thử trên máy
 
 Trang dùng ES module nên phải mở qua một web server, không mở thẳng file `index.html` được.
@@ -38,6 +46,7 @@ css/room.css        Giao diện chữ và nút nằm trên khung 3D
 js/main.js          "Bộ não": scene, camera, ánh sáng, chuột, ngày/đêm, vòng lặp vẽ
 js/room.js          Vỏ phòng: sàn, tường, cửa sổ, tia nắng, dây đèn, tranh, đồng hồ
 js/furniture.js     Đồ đạc: bàn, máy tính, đèn, giường, cây, đàn, túi hàng, mèo…
+js/space.js         Chế độ vũ trụ: sao, Ngân Hà, Mặt Trời, hành tinh, Trái Đất, sao băng, đồ đạc trôi lơ lửng
 js/helpers.js       Hàm tiện ích để dựng hình hộp, hình trụ, texture vẽ bằng canvas
 js/content.js       Chữ và link trong khung thông tin (sửa nội dung ở đây)
 vendor/three/       Thư viện Three.js r186 (giấy phép MIT)
@@ -51,9 +60,12 @@ learing/            Các bài tập cũ (F8, Techmaster)
 - **Thêm đồ vật bấm được:**
   1. Viết hàm dựng đồ vật trong `js/furniture.js` rồi gọi `clickable(world, 'ten-do-vat', group)`.
   2. Thêm chú thích vào `labels` và nội dung vào `content` trong `js/content.js`.
+- **Cho một đồ vật trôi lơ lửng ngoài vũ trụ:** gọi `floaty(world, vật, { lift, tilt, spin, delay })` ngay sau
+  khi dựng nó (xem các ví dụ trong `js/furniture.js`, giải thích từng tuỳ chọn ở đầu `js/space.js`).
 - **Nghịch trực tiếp:** mở Console của trình duyệt (F12) rồi gõ, ví dụ:
 
   ```js
   room.setNight(true)
+  room.setSpace(true)
   room.world.clickables.cat.position.x = 3
   ```

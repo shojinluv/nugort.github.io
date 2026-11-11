@@ -12,6 +12,38 @@ export const labels = {
   plant: 'Cây Monstera · Tưới cây',
 };
 
+// Tên các thiên thể (hiện khi rê chuột lúc ở ngoài vũ trụ) và câu giới thiệu khi bấm vào
+export const skyLabels = {
+  sun: 'Mặt Trời',
+  mercury: 'Sao Thuỷ',
+  venus: 'Sao Kim',
+  earth: 'Trái Đất',
+  moon: 'Mặt Trăng',
+  mars: 'Sao Hoả',
+  jupiter: 'Sao Mộc',
+  saturn: 'Sao Thổ',
+  uranus: 'Sao Thiên Vương',
+  neptune: 'Sao Hải Vương',
+};
+export const skyFacts = {
+  sun: 'Ánh nắng đi mất 8 phút 20 giây mới tới đây ☀️',
+  mercury: 'Sao Thuỷ: một năm ở đây chỉ dài 88 ngày',
+  venus: 'Sao Kim: nóng nhất hệ Mặt Trời, gần 465°C 🔥',
+  earth: 'Trái Đất: nhà của tụi mình 🌍',
+  moon: 'Mặt Trăng: cách Trái Đất khoảng 384.000 km 🌙',
+  mars: 'Sao Hoả: có núi lửa cao gấp 2,5 lần đỉnh Everest 🌋',
+  jupiter: 'Sao Mộc: đường kính gấp 11 lần Trái Đất 🪐',
+  saturn: 'Sao Thổ: nhẹ tới mức thả vào nước sẽ nổi 🛟',
+  uranus: 'Sao Thiên Vương: nằm nghiêng mà lăn quanh Mặt Trời',
+  neptune: 'Sao Hải Vương: gió thổi hơn 2.000 km/h 💨',
+};
+
+// Lúc ở ngoài vũ trụ thì dùng chữ này thay cho chữ ở trên (đồ vật nào không có thì giữ nguyên)
+export const spaceLabels = {
+  cat: 'Mèo Sphynx · Phi hành gia',
+  plant: 'Cây Monstera · Tưới cây không trọng lực',
+};
+
 // Nội dung khung thông tin khi bấm vào đồ vật
 export const content = {
   computer: {
@@ -55,3 +87,13 @@ export const catLines = [
   'Prrr… prrr…',
 ];
 export const plantLines = ['Mát quá! 💧', 'Cảm ơn nha 🌱', 'Lớn thêm xíu rồi nè!', 'Uống no rồi 💦'];
+
+// Câu thoại lúc ở ngoài vũ trụ
+export const catSpaceLines = [
+  'Wheee, lộn một vòng!',
+  'Tui đang bay nè!',
+  'Mũ có cả chỗ cho tai nè!',
+  'Houston, tui đói rồi 🐟',
+  'Meo~ không trọng lực!',
+];
+export const plantSpaceLines = ['Nước tròn vo kìa! 💧', 'Uống kiểu phi hành gia 🫧', 'Ơ, giọt nước bay mất rồi!'];

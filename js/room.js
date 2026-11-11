@@ -2,6 +2,7 @@
 // dây đèn trang trí, tranh treo tường và đồng hồ chạy theo giờ thật.
 import * as THREE from 'three';
 import { mat, box, cylinder, sphere, at, canvasTexture, random, decoration } from './helpers.js';
+import { floaty } from './space.js';
 
 // Quy ước: 1 đơn vị ≈ 30cm. Mặt sàn nằm ở y = 0, lòng phòng trải từ -5 đến 5 theo trục x và z.
 // Tường sau nằm ở z = -5, tường trái nằm ở x = -5. Camera nhìn từ phía trước bên phải.
@@ -16,7 +17,7 @@ export function buildRoom(world) {
   room.name = 'vỏ phòng';
   world.scene.add(room);
 
-  buildFloor(room);
+  buildFloor(room, world);
   buildWalls(room);
   buildWindow(room, world);
   buildSunbeam(room, world);
@@ -27,7 +28,7 @@ export function buildRoom(world) {
 }
 
 // ---------- Sàn gỗ ----------
-function buildFloor(room) {
+function buildFloor(room, world) {
   // Vẽ các tấm ván gỗ lên canvas rồi dán lên mặt sàn
   const planks = canvasTexture(1024, 1024, (ctx, w, h) => {
     const rows = 14;
@@ -63,11 +64,14 @@ function buildFloor(room) {
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
   });
-  const shadow = new THREE.Mesh(
-    new THREE.PlaneGeometry(22, 22),
-    new THREE.MeshBasicMaterial({ map: blob, transparent: true, depthWrite: false }),
-  );
+  const shadowMat = new THREE.MeshBasicMaterial({ map: blob, transparent: true, depthWrite: false });
+  const shadow = new THREE.Mesh(new THREE.PlaneGeometry(22, 22), shadowMat);
   room.add(decoration(at(shadow, 0, -0.9, 0, -Math.PI / 2)));
+  // Ngoài vũ trụ không có mặt đất nào để đổ bóng xuống, nên vệt bóng mờ đi
+  world.updaters.push(() => {
+    shadowMat.opacity = 1 - world.space;
+    shadow.visible = world.space < 0.999;
+  });
 }
 
 // ---------- Tường ----------
@@ -131,8 +135,11 @@ function buildWindow(room, world) {
   room.add(at(box(w, 0.06, 0.06, frame, 0), cx, cy, z));                      // song cửa ngang
 
   // Chậu xương rồng nhỏ trên bậu cửa
-  room.add(at(cylinder(0.11, 0.08, 0.16, '#e88a5e', 14), WIN.x2 - 0.35, WIN.y1 + 0.08, -4.85));
-  room.add(at(new THREE.Mesh(new THREE.CapsuleGeometry(0.065, 0.14, 4, 10), mat('#5d9e6f')), WIN.x2 - 0.35, WIN.y1 + 0.27, -4.85));
+  const cactus = at(new THREE.Group(), WIN.x2 - 0.35, WIN.y1, -4.85);
+  cactus.add(at(cylinder(0.11, 0.08, 0.16, '#e88a5e', 14), 0, 0.08, 0));
+  cactus.add(at(new THREE.Mesh(new THREE.CapsuleGeometry(0.065, 0.14, 4, 10), mat('#5d9e6f')), 0, 0.27, 0));
+  room.add(cactus);
+  floaty(world, cactus, { lift: [0, 0.3, 0.35], tilt: [0.25, 0.3, 0.25], spin: 0.3, delay: 0.1 });
 
   // Rèm cửa: mỗi bên 4 nếp vải (hình trụ ép dẹt)
   const curtain = mat('#f6a7a0');
@@ -146,12 +153,20 @@ function buildWindow(room, world) {
   room.add(at(cylinder(0.035, 0.035, w + 2, '#c98f5a', 12), cx, 4.95, -4.8, 0, 0, Math.PI / 2)); // thanh treo rèm
 
   // Bầu trời: hai tấm hình phẳng đặt sau bức tường. Ban đêm thì tấm "trời đêm" hiện dần lên.
+  // Khi bay ra vũ trụ thì cả hai tan đi, nhìn qua cửa sổ sẽ thấy sao và Trái Đất thật (xem space.js).
   const geometry = new THREE.PlaneGeometry(6, 3.75);
-  const day = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ map: canvasTexture(640, 400, drawDaySky), toneMapped: false }));
+  const dayMat = new THREE.MeshBasicMaterial({ map: canvasTexture(640, 400, drawDaySky), toneMapped: false, transparent: true });
   const nightMat = new THREE.MeshBasicMaterial({ map: canvasTexture(640, 400, drawNightSky), toneMapped: false, transparent: true, opacity: 0 });
+  const day = new THREE.Mesh(geometry, dayMat);
   const night = new THREE.Mesh(geometry, nightMat);
   room.add(decoration(at(day, cx, cy, -5.6)), decoration(at(night, cx, cy, -5.58)));
-  world.nightFns.push((n) => { nightMat.opacity = n; });
+  world.nightFns.push((n) => {
+    const keep = 1 - world.space;
+    dayMat.opacity = keep;
+    nightMat.opacity = n * keep;
+    day.visible = keep > 0.001;
+    night.visible = n * keep > 0.001;
+  });
 }
 
 // Phần trời nhìn thấy qua cửa sổ nằm khoảng x: 160–480, y: 80–320 trên tấm canvas 640×400
@@ -268,7 +283,8 @@ function buildSunbeam(room, world) {
     color: '#ffe2a6', vertexColors: true, transparent: true, depthWrite: false,
     blending: THREE.AdditiveBlending, side: THREE.DoubleSide, toneMapped: false,
   });
-  room.add(decoration(new THREE.Mesh(geometry, beamMat)));
+  const beam = decoration(new THREE.Mesh(geometry, beamMat));
+  room.add(beam);
 
   // Bụi li ti bay lơ lửng trong vệt nắng
   const N = 140;
@@ -304,13 +320,17 @@ function buildSunbeam(room, world) {
     dustGeo.attributes.position.needsUpdate = true;
   });
 
-  // Ban đêm: nắng vàng chuyển thành ánh trăng xanh nhạt
+  // Ban đêm: nắng vàng chuyển thành ánh trăng xanh nhạt.
+  // Ngoài vũ trụ là chân không: không có không khí để ánh sáng hắt ra thành vệt, nên vệt nắng tan đi.
+  // Chỉ còn mảng nắng rọi trên sàn và mấy hạt bụi lấp lánh nằm trong vùng có nắng.
   const dayColor = new THREE.Color('#ffe2a6');
   const nightColor = new THREE.Color('#8fa8ff');
   world.nightFns.push((n) => {
+    const air = 1 - world.space;
     beamMat.color.lerpColors(dayColor, nightColor, n);
-    beamMat.opacity = 1 - 0.45 * n;
-    dustMat.opacity = 0.9 - 0.6 * n;
+    beamMat.opacity = (1 - 0.45 * n) * air;
+    beam.visible = air > 0.001;
+    dustMat.opacity = (0.9 - 0.6 * n) * (0.5 + 0.5 * air);
   });
 }
 

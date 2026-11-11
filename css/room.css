@@ -13,6 +13,8 @@
   --night-ink: #f3ecff;
   --night-ink-soft: #b9b2dc;
   --night-card: rgba(40, 42, 90, 0.86);
+  --space-1: #1a1c48;
+  --space-2: #04040f;
   font-family: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
@@ -37,13 +39,30 @@ body::before {
   content: '';
   position: fixed;
   inset: 0;
+  z-index: -2;
   background: radial-gradient(120% 90% at 50% 30%, var(--night-1) 0%, var(--night-2) 100%);
   opacity: 0;
   transition: opacity 1.2s ease;
 }
 
-body.is-night { color: var(--night-ink); }
+/* Lớp nền vũ trụ (có vài đám tinh vân tím, xanh) phủ lên trên cả nền ngày lẫn nền đêm */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(38% 30% at 18% 78%, rgba(124, 92, 214, 0.28), transparent 70%),
+    radial-gradient(34% 26% at 84% 22%, rgba(64, 140, 220, 0.22), transparent 70%),
+    radial-gradient(120% 90% at 50% 30%, var(--space-1) 0%, var(--space-2) 100%);
+  opacity: 0;
+  transition: opacity 1.6s ease;
+}
+
+body.is-night,
+body.is-space { color: var(--night-ink); }
 body.is-night::before { opacity: 1; }
+body.is-space::after { opacity: 1; }
 
 #scene {
   position: fixed;
@@ -60,12 +79,13 @@ body.is-night::before { opacity: 1; }
   position: fixed;
   top: max(20px, env(safe-area-inset-top));
   left: 24px;
-  right: 170px;
+  right: 280px;
   pointer-events: none;
   text-shadow: 0 1px 12px rgba(255, 244, 234, 0.9);
 }
 
-body.is-night .hud { text-shadow: 0 1px 12px rgba(14, 15, 38, 0.9); }
+body.is-night .hud,
+body.is-space .hud { text-shadow: 0 1px 12px rgba(14, 15, 38, 0.9); }
 
 .hud h1 {
   margin: 0;
@@ -84,7 +104,8 @@ body.is-night .hud { text-shadow: 0 1px 12px rgba(14, 15, 38, 0.9); }
   transition: color 1s ease;
 }
 
-body.is-night .hint { color: var(--night-ink-soft); }
+body.is-night .hint,
+body.is-space .hint { color: var(--night-ink-soft); }
 
 .hint--touch { display: none; }
 
@@ -93,11 +114,16 @@ body.is-night .hint { color: var(--night-ink-soft); }
   .hint--touch { display: block; }
 }
 
-/* ---------- Nút ngày/đêm ---------- */
-.night-btn {
+/* ---------- Nút vũ trụ và nút ngày/đêm ---------- */
+.hud-btns {
   position: fixed;
   top: max(20px, env(safe-area-inset-top));
   right: 20px;
+  display: flex;
+  gap: 10px;
+}
+
+.hud-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -114,15 +140,16 @@ body.is-night .hint { color: var(--night-ink-soft); }
   transition: transform 0.2s ease, background-color 0.6s ease, color 0.6s ease;
 }
 
-.night-btn:hover { transform: translateY(-1px); }
-.night-btn:focus-visible,
+.hud-btn:hover { transform: translateY(-1px); }
+.hud-btn:focus-visible,
 .panel__close:focus-visible,
 .btn:focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
 }
 
-body.is-night .night-btn {
+body.is-night .hud-btn,
+body.is-space .hud-btn {
   color: var(--night-ink);
   background: var(--night-card);
 }
@@ -133,8 +160,11 @@ body.is-night .night-btn {
 }
 
 .icon--sun,
-body.is-night .icon--moon { display: none; }
-body.is-night .icon--sun { display: block; }
+body.is-night .icon--moon,
+.icon--earth,
+body.is-space .icon--rocket { display: none; }
+body.is-night .icon--sun,
+body.is-space .icon--earth { display: block; }
 
 /* ---------- Bộ đếm khám phá ---------- */
 .progress {
@@ -152,7 +182,8 @@ body.is-night .icon--sun { display: block; }
   transition: background-color 0.6s ease, color 0.6s ease;
 }
 
-body.is-night .progress { background: var(--night-card); }
+body.is-night .progress,
+body.is-space .progress { background: var(--night-card); }
 .progress.is-bump { animation: bump 0.45s ease; }
 .progress.is-done,
 body.is-night .progress.is-done {
@@ -378,7 +409,14 @@ body.is-night .loader { background: var(--night-2); }
     right: 140px;
   }
 
-  .night-btn { right: 14px; }
+  /* Điện thoại hẹp: xếp hai nút chồng lên nhau để chừa chỗ cho tiêu đề */
+  .hud-btns {
+    right: 14px;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+  }
+
   .progress { left: 16px; }
 
   .panel {
