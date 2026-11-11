@@ -623,3 +623,19 @@ display: inline-block;
     
     }
 }
+
+/* Nút đóng form mua vé: bỏ kiểu mặc định của button, giữ nguyên hình dạng icon cũ */
+.modal .close {
+    border: none;
+    background: none;
+    padding: 0;
+    font-size: inherit;
+}
+
+/* Dòng thông báo nhỏ dưới form */
+.form-note {
+    margin-top: 8px;
+    font-size: 14px;
+    color: #009688;
+    min-height: 1.4em;
+}

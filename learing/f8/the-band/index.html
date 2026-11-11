@@ -7,7 +7,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Band by Nugỏrt</title>
     <script src="https://kit.fontawesome.com/5e3d8c980a.js" crossorigin="anonymous"></script>
-    <!-- https://fontawesome.com/kits  nguyendinhtruong10522@gmail.com-->
     <link rel="shortcut icon" href="./assets/img/favicon.jpg" type="image/x-icon">
     <link rel="stylesheet" href="./assets/css/styles.css">
     <link rel="stylesheet" href="./assets/css/responsive.css">
@@ -126,7 +125,6 @@
                     <ul class="tickets-list">
                         <li>September <span class="sold-out">Sold out</span></li>
                         <li>October <span class="sold-out">Sold out</span></li>
-                        <div class="clear"></div>
                         <li>November <span class="tickets-left">3</span></li>
                     </ul>
 
@@ -181,7 +179,7 @@
                         </p>
                         <p>
                             <i class="fa-solid fa-phone"></i>
-                            Phone: <a href="tell:+00 151515">+00 151515</a>
+                            Phone: <a href="tel:+00151515">+00 151515</a>
                         </p>
                         <p>
                             <i class="fa-solid fa-envelope"></i>
@@ -190,7 +188,7 @@
                     </div>
 
                     <div class="col two-cols s-one-col s-mt-16">
-                        <form action="">
+                        <form action="" class="js-contact-form">
                             <div class="row">
                                 <div class="col two-cols s-one-col">
                                     <input type="text" name="" placeholder="Name" class="form-control" required>
@@ -202,11 +200,12 @@
 
                             <div class="row">
                                 <div class="col one-col mt-8">
-                                    <input type="text" name="" placeholder="Massage" class="form-control" required>
+                                    <input type="text" name="" placeholder="Message" class="form-control" required>
                                 </div>
                             </div>
 
                             <input type="submit" value="SEND" class="contact-form-submit s-full-witdh mt-16">
+                            <p class="form-note js-contact-note" role="status"></p>
                         </form>
                     </div>
                 </div>
@@ -236,9 +235,9 @@
 
     <div class="modal  js-modal">
         <div class="modal-container js-modal-container">
-            <modal class="close js-modal-close">
+            <button type="button" class="close js-modal-close" aria-label="Close">
                 <i class="modal-heading-close fa-solid fa-xmark"></i>
-            </modal>
+            </button>
 
             <header class="modal-header">
                 <i class="modal-heading-bag fa-solid fa-suitcase"></i>
@@ -250,7 +249,7 @@
                     <i class="fa-solid fa-cart-shopping"></i>
                     Tickets, 15$ per person
                 </label>
-                <input id="modal-tickets-quantity" type="text" class="modal-input" placeholder="How many ?" required>
+                <input id="modal-tickets-quantity" type="number" min="1" class="modal-input" placeholder="How many ?" required>
 
                 <label for="modal-tickets-email" class="modal-label">
                     <i class="fa-solid fa-user"></i>
@@ -258,9 +257,10 @@
                 </label>
                 <input id="modal-tickets-email" type="email" class="modal-input" placeholder="Enter email" required>
 
-                <button id="buy-tickets">
+                <button id="buy-tickets" type="button">
                     Pay <i class="fa-solid fa-check"></i>
                 </button>
+                <p class="form-note js-pay-note" role="status"></p>
             </div>
 
             <div class="modal-footer">
@@ -297,9 +297,30 @@
 
         modal.addEventListener('click', hideBuyTickets)
 
+        //đóng form mua vé bằng phím Esc
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') hideBuyTickets()
+        })
+
         //ngăn chặn hành vi nổi bọt (khi click vào khoảng không để đóng form và thứ k mong muốn)
         modalContainer.addEventListener('click', function (event) {
             event.stopPropagation()
+        })
+
+        //bấm Pay: kiểm tra số vé và email rồi báo lại (trang demo nên không thanh toán thật)
+        const payNote = document.querySelector('.js-pay-note')
+        document.getElementById('buy-tickets').addEventListener('click', function () {
+            const quantity = document.getElementById('modal-tickets-quantity')
+            const email = document.getElementById('modal-tickets-email')
+            if (!quantity.reportValidity() || !email.reportValidity()) return
+            payNote.textContent = 'Thanks! ' + quantity.value + ' ticket(s) reserved for ' + email.value + '. (Demo only, nothing was charged.)'
+        })
+
+        //bấm SEND ở form liên hệ: không tải lại trang, chỉ báo đã nhận
+        document.querySelector('.js-contact-form').addEventListener('submit', function (event) {
+            event.preventDefault()
+            this.reset()
+            document.querySelector('.js-contact-note').textContent = 'Thanks for your note! (Demo only, nothing was sent.)'
         })
     </script>
 
@@ -309,7 +330,7 @@
         var navBar = document.getElementById('nav-bar-bar');
         var headerHeight = header.clientHeight;
 
-        navBar.onclick = function () {
+        navBar.onclick = function (event) {
             event.preventDefault();
             var isClosed = header.clientHeight === headerHeight;
             if (isClosed) {
@@ -326,7 +347,7 @@
         for (var i = 0; i < menuItems.length; i++) {
             var menuItem = menuItems[i];
 
-            menuItem.onclick = function () {
+            menuItem.onclick = function (event) {
                 var isParentMenu = this.nextElementSibling && this.nextElementSibling.classList.contains('subnav');
                 if (isParentMenu) {
                     event.preventDefault();
