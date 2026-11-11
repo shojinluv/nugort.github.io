@@ -159,7 +159,9 @@ function buildWindow(room, world) {
   const nightMat = new THREE.MeshBasicMaterial({ map: canvasTexture(640, 400, drawNightSky), toneMapped: false, transparent: true, opacity: 0 });
   const day = new THREE.Mesh(geometry, dayMat);
   const night = new THREE.Mesh(geometry, nightMat);
-  room.add(decoration(at(day, cx, cy, -5.6)), decoration(at(night, cx, cy, -5.58)));
+  // Đặt sát ngay sau lưng tường (mặt sau tường ở z = -5.3). Để xa hơn thì khi xoay camera sang ngang,
+  // mép tấm bầu trời sẽ thò ra khỏi cạnh tường thành một dải xanh lơ lửng.
+  room.add(decoration(at(day, cx, cy, -5.31)), decoration(at(night, cx, cy, -5.305)));
   world.nightFns.push((n) => {
     const keep = 1 - world.space;
     dayMat.opacity = keep;
