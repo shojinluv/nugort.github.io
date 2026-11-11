@@ -482,11 +482,40 @@ function buildPoster(room, world) {
 }
 
 // ---------- Giấy note dán tường ----------
+// Ba tờ giấy chép một bài thơ sáu dòng, mỗi tờ hai dòng, đọc từ trái qua phải, trên xuống dưới.
+// Mỗi dòng thơ ngắt làm hai nửa ở dấu phẩy cho vừa bề ngang tờ giấy.
+// Màu mực chọn cùng tông với màu giấy nhưng đậm hơn hẳn để dễ đọc.
+const POEM_NOTES = [
+  { paper: '#fff07a', ink: '#6b4a12', x: -2.1, y: 3.45, tilt: 0.08,
+    lines: [['Trâm Anh thuở ấy,', 'vớt thân tàn,'], ['Anh bỗng sa cơ,', 'hận ngút ngàn.']] },
+  { paper: '#ffb7c9', ink: '#8a2f52', x: -1.55, y: 3.3, tilt: -0.1,
+    lines: [['Tha phương áo níu,', 'chân chùng bước,'], ['em kẹt trùng vây,', 'ở cũng nan.']] },
+  { paper: '#b9f0d3', ink: '#1f6b55', x: -1.85, y: 2.85, tilt: 0.05,
+    lines: [['Đi chẳng thành đường,', 'lưu chẳng đặng,'], ['Mà thôi phó mặc,', 'cảnh ly tan']] },
+];
+
 function buildStickyNotes(room) {
-  const notes = [['#fff07a', -2.1, 3.45, 0.08], ['#ffb7c9', -1.55, 3.3, -0.1], ['#b9f0d3', -1.85, 2.85, 0.05]];
-  for (const [color, x, y, rz] of notes) {
-    const note = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.42), mat(color));
-    room.add(at(note, x, y, -4.97, 0, 0, rz));
+  for (const n of POEM_NOTES) {
+    const texture = canvasTexture(512, 512, (ctx, w, h) => {
+      ctx.fillStyle = n.paper;
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = n.ink;
+      ctx.textBaseline = 'middle';
+      // Chữ viết tay "Patrick Hand" (tải trong index.html); nếu chưa tải kịp thì dùng chữ viết tay có sẵn trên máy
+      const font = (size) => `${size}px "Patrick Hand", "Segoe Print", "Comic Sans MS", cursive`;
+      n.lines.forEach(([first, second], i) => {
+        const top = 92 + i * 216; // mỗi dòng thơ chiếm hai hàng chữ, hai dòng thơ cách nhau một quãng
+        [first, second].forEach((text, row) => {
+          const indent = 36 + row * 56; // nửa sau thụt vào một chút
+          let size = 66;
+          ctx.font = font(size);
+          while (ctx.measureText(text).width > w - indent - 28 && size > 30) ctx.font = font(--size); // co chữ cho vừa tờ giấy
+          ctx.fillText(text, indent, top + row * 84);
+        });
+      });
+    });
+    const note = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.42), new THREE.MeshStandardMaterial({ map: texture, roughness: 0.9 }));
+    room.add(at(note, n.x, n.y, -4.97, 0, 0, n.tilt));
   }
 }
 

@@ -30,7 +30,10 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').match
 
 // Chờ font tải xong (tối đa 1,5 giây) để chữ vẽ trên tranh và màn hình máy tính đẹp hơn
 await Promise.race([
-  document.fonts.load('800 40px "Be Vietnam Pro"'),
+  Promise.all([
+    document.fonts.load('800 40px "Be Vietnam Pro"'),
+    document.fonts.load('40px "Patrick Hand"', 'Trâm Anh thuở ấy'), // chữ viết tay trên giấy note (cần cả bộ chữ có dấu tiếng Việt)
+  ]),
   new Promise((resolve) => setTimeout(resolve, 1500)),
 ]).catch(() => {});
 
