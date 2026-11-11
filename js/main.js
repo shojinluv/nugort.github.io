@@ -5,7 +5,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { buildRoom, SUN_DIR, WALL_H, HATCH } from './room.js';
 import { buildFurniture } from './furniture.js';
 import { buildSpace } from './space.js';
-import { buildIsland } from './island.js';
+import { buildIsland, insideIsland, ISLAND_TOP } from './island.js';
 import {
   content, labels, spaceLabels, skyLabels, skyFacts, catLines, catSpaceLines, catPeekLines, plantLines, plantSpaceLines,
 } from './content.js';
@@ -62,17 +62,11 @@ const controls = new OrbitControls(camera, ui.canvas);
 controls.enableDamping = true; // xoay có quán tính, mượt hơn
 controls.enablePan = false;    // không cho kéo lệch khỏi căn phòng
 controls.minDistance = 4;
-// Giới hạn góc xoay khi ở trong nhà: không nhìn thẳng từ trên xuống, không chui xuống dưới sàn,
-// và chỉ xoay trong góc phía trước để tường không che mất phòng.
-// Ra ngoài vũ trụ thì bỏ hết giới hạn, xoay 360° tuỳ thích (xem phần 7b).
-const ROOM_VIEW = { minPolar: 0.35, maxPolar: 1.38, minAzimuth: -0.1, maxAzimuth: Math.PI / 2 + 0.1 };
-function setFreeCamera(free) {
-  controls.minPolarAngle = free ? 0 : ROOM_VIEW.minPolar;
-  controls.maxPolarAngle = free ? Math.PI : ROOM_VIEW.maxPolar;
-  controls.minAzimuthAngle = free ? -Infinity : ROOM_VIEW.minAzimuth;
-  controls.maxAzimuthAngle = free ? Infinity : ROOM_VIEW.maxAzimuth;
-}
-setFreeCamera(false);
+// Xoay tự do 360° theo mọi hướng, cả ở Trái Đất lẫn ngoài vũ trụ: vòng ra sau tường, lên đỉnh đầu,
+// hay chui xuống ngắm gầm hòn đảo đều được. Camera chỉ bị chặn không cho xuyên qua tường, sàn
+// và khối đá dưới đảo (xem phần 15b).
+// Riêng lúc hạ cánh mà camera đang ở dưới gầm thì bay vòng lên một góc dễ nhìn (xem backToRoomView).
+const LANDING_VIEW = { maxPolar: 1.45, polar: 1.15 };
 
 // ===== 5. Ánh sáng =====
 const hemi = new THREE.HemisphereLight('#fff4ea', '#d8b89a', 2.2); // ánh sáng trời dịu, chiếu đều
@@ -173,23 +167,16 @@ function setSpace(value) {
   document.body.classList.toggle('is-space', value);
   ui.spaceBtn.setAttribute('aria-pressed', String(value));
   ui.spaceBtn.querySelector('span').textContent = value ? 'Hạ cánh' : 'Vũ trụ';
-  setFreeCamera(value);
   if (!value) backToRoomView();
 }
 
-// Hạ cánh: nếu camera đang ở góc mà trong nhà không cho (sau tường, dưới sàn, trên đỉnh đầu),
-// thì bay vòng về góc gần nhất được phép, giữ nguyên độ xa gần
+// Hạ cánh: nếu camera đang ở dưới gầm sàn thì hòn đảo trồi lên sẽ che mất (hoặc kẹp camera vào trong đá),
+// nên bay vòng lên một góc nhìn từ trên xuống, giữ nguyên hướng xoay và độ xa gần
 function backToRoomView() {
   const offset = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target));
-  const mid = (ROOM_VIEW.minAzimuth + ROOM_VIEW.maxAzimuth) / 2;
-  const half = (ROOM_VIEW.maxAzimuth - ROOM_VIEW.minAzimuth) / 2;
-  const turn = Math.atan2(Math.sin(offset.theta - mid), Math.cos(offset.theta - mid)); // lệch khỏi giữa bao nhiêu
-  const theta = mid + THREE.MathUtils.clamp(turn, -half, half);
-  const phi = THREE.MathUtils.clamp(offset.phi, ROOM_VIEW.minPolar, ROOM_VIEW.maxPolar);
-  if (Math.abs(theta - mid - turn) < 1e-3 && Math.abs(phi - offset.phi) < 1e-3) return; // vẫn trong góc cho phép
+  if (offset.phi <= LANDING_VIEW.maxPolar) return; // đang nhìn từ trên xuống, không cần bay
   if (openId) { savedView = null; closePanel(); }
-  offset.theta = theta;
-  offset.phi = phi;
+  offset.phi = LANDING_VIEW.polar;
   flyTo(HOME_TARGET, HOME_TARGET.clone().add(new THREE.Vector3().setFromSpherical(offset)), 1.4, easeInOut, true);
 }
 ui.spaceBtn.addEventListener('click', () => {
@@ -509,7 +496,18 @@ function guardWalls() {
   if (d.z < 0) wall = Math.min(wall, (-5.3 - T.z) / d.z); else if (d.z > 0) open = Math.min(open, (5 - T.z) / d.z);
   if (d.y < 0) wall = Math.min(wall, (-0.5 - 0.9 * world.space - T.y) / d.y); else if (d.y > 0) open = Math.min(open, (WALL_H - T.y) / d.y);
   const outside = wall < open && dist > wall;
-  controls.minDistance = outside ? Math.max(4, wall + 1.6) : 4;
+  controls.minDistance = Math.max(4, outside ? wall + 1.6 : 0, islandExit(T, d));
+}
+
+// Nhìn từ dưới lên ở Trái Đất: tia từ tâm ra camera chui qua mặt cỏ, xuyên qua đất đá rồi mới ló ra ngoài.
+// Camera phải đứng ngoài chỗ ló ra đó (cộng một khoảng lùi), không thì chui tọt vào trong lòng đảo.
+// Đi dần dọc theo tia từng bước nhỏ cho tới khi ra khỏi khối đảo. Lúc đang cất cánh thì đảo đã rời đi nên bỏ qua.
+function islandExit(T, d) {
+  if (d.y > -0.02 || world.spaceProgress > 0.1) return 0;
+  let s = (ISLAND_TOP - T.y) / d.y; // chỗ tia chạm mặt cỏ
+  if (!insideIsland(T.x + d.x * s, ISLAND_TOP - 0.05, T.z + d.z * s)) return 0; // tia đi ra ngoài mép đảo
+  for (let i = 0; i < 200 && insideIsland(T.x + d.x * s, T.y + d.y * s, T.z + d.z * s); i++) s += 0.25;
+  return s + 1.2;
 }
 
 // ===== 15c. Nền trang theo độ cao của căn phòng =====

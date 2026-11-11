@@ -21,6 +21,26 @@ const between = (a, b) => a + rand() * (b - a);
 const edge = (a) => 10.4 + 0.5 * Math.sin(3 * a + 1) + 0.35 * Math.sin(5 * a + 2) + 0.25 * Math.sin(7 * a);
 const polar = (a, r) => [Math.cos(a) * r, Math.sin(a) * r];
 
+// Lúc nằm yên, gốc toạ độ của đảo cao hơn tâm đáy sàn (PAD) 0,12; mặt cỏ thấp hơn gốc 0,14
+const REST_LIFT = 0.12;
+export const ISLAND_TOP = PAD.y + REST_LIFT - 0.14; // độ cao mặt cỏ (toạ độ thế giới)
+// Hình dáng chân đảo: bán kính khối đá ở độ sâu f (0 = ngay dưới lớp đất, 1 = mũi nhọn dưới đáy)
+const ROCK_TOP = -1.7;
+const ROCK_DEPTH = 7;
+const rockRadius = (f) => 9.6 * (1 - f) ** 0.75 + 0.2;
+
+/** Một điểm (toạ độ thế giới) có nằm trong khối đảo lúc đảo đang nằm yên không. Dùng để chặn camera chui vào đảo. */
+export function insideIsland(x, y, z) {
+  const lx = x - PAD.x;
+  const ly = y - PAD.y - REST_LIFT;
+  const lz = z - PAD.z;
+  if (ly > -0.1) return false;
+  const r = Math.hypot(lx, lz);
+  if (ly > ROCK_TOP - 0.05) return r < edge(Math.atan2(lz, lx)) + 0.15; // lớp cỏ và đất
+  const f = (ROCK_TOP - ly) / ROCK_DEPTH;
+  return f <= 1 && r < rockRadius(f) * 1.15; // khối đá (cộng thêm phần gồ ghề)
+}
+
 const FLOOR = 5.4; // nửa cạnh sàn nhà (cộng chút lề), tính từ tâm đảo
 const POND = { a: 0.2, r: 7.6, size: 1.25 };
 const [PX, PZ] = polar(POND.a, POND.r);
@@ -66,7 +86,7 @@ export function buildIsland(world) {
     island.visible = size > 0.002;
     if (!island.visible) return;
     // Mặt cỏ nằm thấp hơn gốc toạ độ 0,14; nhấc cả đảo lên 0,12 cho mặt cỏ sát ngay dưới đáy sàn nhà
-    island.position.copy(PAD).addScaledVector(dir, h - LAUNCH_H0 - 0.12);
+    island.position.copy(PAD).addScaledVector(dir, h - LAUNCH_H0 - REST_LIFT);
     island.quaternion.copy(q);
     island.scale.setScalar(size);
 
@@ -110,7 +130,7 @@ function buildGround(island) {
   const profile = []; // đi từ mũi nhọn dưới đáy lên trên, để mặt ngoài quay ra ngoài
   for (let i = 10; i >= 0; i--) {
     const f = i / 10;
-    profile.push(new THREE.Vector2(9.6 * (1 - f) ** 0.75 + 0.2, -1.7 - f * 7));
+    profile.push(new THREE.Vector2(rockRadius(f), ROCK_TOP - f * ROCK_DEPTH));
   }
   const rockGeo = new THREE.LatheGeometry(profile, 28);
   const pos = rockGeo.attributes.position;
