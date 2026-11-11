@@ -85,12 +85,7 @@ function buildWalls(room, world) {
   backWall(WIN.x2 - WIN.x1, WIN.y1, (WIN.x1 + WIN.x2) / 2, WIN.y1 / 2);          // dưới cửa sổ
   backWall(WIN.x2 - WIN.x1, WALL_H - WIN.y2, (WIN.x1 + WIN.x2) / 2, (WIN.y2 + WALL_H) / 2); // trên cửa sổ
 
-  // Tường trái
-  const left = new THREE.Mesh(new THREE.BoxGeometry(T, WALL_H, 10), [paint, paint, cut, paint, cut, paint]);
-  room.add(at(left, -5 - T / 2, WALL_H / 2, 0));
-
-  // Bản tường trái thứ hai, có khoét sẵn một lỗ tròn cho ô kính cửa khoang nhìn xuyên được.
-  // Ở Trái Đất dùng bản đặc, ra vũ trụ (khi cửa khoang hiện ra) thì đổi sang bản có lỗ.
+  // Tường trái: khoét sẵn một lỗ tròn cho ô kính cửa khoang nhìn xuyên được (xem buildAirlock)
   const outline = new THREE.Shape();
   outline.moveTo(-5, 0);
   outline.lineTo(5, 0);
@@ -119,12 +114,7 @@ function buildWalls(room, world) {
     }
   }
   geo.addGroup(start, p.count - start, current);
-  const leftHoled = new THREE.Mesh(geo, [paint, cut]);
-  room.add(leftHoled);
-  world.updaters.push(() => {
-    leftHoled.visible = world.space > 0.02;
-    left.visible = !leftHoled.visible;
-  });
+  room.add(new THREE.Mesh(geo, [paint, cut]));
 
   // "Trần nhà tàng hình": không vẽ lên màn hình nhưng vẫn chặn nắng,
   // nên nắng chỉ lọt vào phòng qua ô cửa sổ
@@ -790,7 +780,7 @@ function buildOxScroll(room, world) {
 }
 
 // ---------- Dàn pin mặt trời ở mặt ngoài tường sau (mặt đón nắng) ----------
-// Chỉ bung ra khi căn phòng bay ra vũ trụ: mỗi tấm pin treo bằng bản lề ở mép trên,
+// Ở Trái Đất các tấm pin nằm áp sát tường. Bay ra vũ trụ thì bung ra: mỗi tấm treo bằng bản lề ở mép trên,
 // mép dưới chống ra ngoài cho mặt pin ngửa lên đón nắng. Bên dưới cửa sổ có hộp ắc quy báo mức sạc.
 function buildSolarPanels(room, world) {
   const cells = canvasTexture(256, 256, (ctx, w, h) => {
@@ -846,14 +836,12 @@ function buildSolarPanels(room, world) {
 
   world.updaters.push((t) => {
     const s = world.space;
-    array.visible = s > 0.02;
-    if (!array.visible) return;
     hinges.forEach((hinge) => { hinge.rotation.x = 0.5 * s; }); // bung ra, ngửa mặt về phía Mặt Trời
-    // Có nắng thì các vạch sạc sáng lần lượt như đang nạp điện; vào bóng Trái Đất (buổi tối) thì chỉ còn một vạch
+    // Có nắng thì các vạch sạc sáng lần lượt như đang nạp điện; buổi tối (hay vào bóng Trái Đất) thì chỉ còn một vạch
     const sun = 1 - world.night;
     bars.forEach((m, i) => {
       const charging = (Math.sin(t * 2.5 - i * 0.9) * 0.5 + 0.5) * sun;
-      m.emissiveIntensity = s * (i === 0 ? 1.6 : 0.2 + 1.6 * charging);
+      m.emissiveIntensity = i === 0 ? 1.6 : 0.2 + 1.6 * charging;
     });
   });
 }
@@ -973,8 +961,8 @@ function buildThrusters(room, world) {
 }
 
 // ---------- Cửa khoang và tên tàu ở mặt ngoài tường trái ----------
-// Cũng chỉ hiện khi ở ngoài vũ trụ. Đèn báo nháy đỏ lúc đang bay lên/đáp xuống, xanh khi đã ổn định;
-// tay quay trên cửa xoay một vòng rồi khoá lại.
+// Lúc nào cũng có, ở Trái Đất thì là cửa bước ra hòn đảo. Đèn báo nháy đỏ lúc đang bay lên/đáp xuống,
+// xanh khi đã đậu yên trên đảo hay đã lên tới quỹ đạo; tay quay trên cửa xoay một vòng rồi khoá lại.
 function buildAirlock(room, world) {
   const metal = new THREE.MeshStandardMaterial({ color: '#c9d2e3', metalness: 0.6, roughness: 0.4 });
   const dark = new THREE.MeshStandardMaterial({ color: '#5d6577', metalness: 0.5, roughness: 0.5 });
@@ -1101,18 +1089,16 @@ function buildAirlock(room, world) {
 
   out.traverse((o) => { o.userData.noPick = true; });
 
+  liner.scale.y = 0.64; // dài vừa tới mặt kính ở hai mặt cửa
+  keyMat.emissiveIntensity = 1.2;
+
   world.updaters.push((t) => {
     const s = world.space;
-    out.visible = inner.visible = liner.visible = s > 0.02;
-    if (!out.visible) return;
-    door.scale.z = doorIn.scale.z = Math.max(s, 0.001); // cửa trồi dần ra khỏi mặt tường, cả hai phía
-    nameMat.opacity = s;
-    wheels.forEach((w) => { w.rotation.z = -s * Math.PI * 2; });
-    const sealed = s > 0.995;
-    lampMat.emissive.set(sealed ? '#3dff9a' : '#ff4d4d');
-    lampMat.emissiveIntensity = sealed ? 1.4 : (Math.sin(t * 9) > 0 ? 1.8 : 0.15);
-    keyMat.emissiveIntensity = 1.2 * s;
-    liner.scale.y = 0.3 + 0.34 * s; // dài vừa tới mặt kính hai bên khi cửa đã trồi ra hết
+    wheels.forEach((w) => { w.rotation.z = -s * Math.PI * 2; }); // cất cánh thì tay quay xoay một vòng khoá cửa
+    // Đèn báo xanh khi đang đậu trên đảo hay đã lên tới quỹ đạo, nháy đỏ trong lúc bay
+    const settled = s > 0.995 || s < 0.005;
+    lampMat.emissive.set(settled ? '#3dff9a' : '#ff4d4d');
+    lampMat.emissiveIntensity = settled ? 1.4 : (Math.sin(t * 9) > 0 ? 1.8 : 0.15);
   });
 }
 
