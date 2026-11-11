@@ -10,6 +10,7 @@ export const labels = {
   lamp: 'Đèn bàn · Đổi ngày/đêm',
   cat: 'Mèo Sphynx · Đang ngủ',
   plant: 'Cây Monstera · Tưới cây',
+  poster: 'Bức tranh · Di sản của Trâm Anh',
 };
 
 // Tên các thiên thể (hiện khi rê chuột lúc ở ngoài vũ trụ) và câu giới thiệu khi bấm vào
@@ -74,6 +75,19 @@ export const content = {
       'Mới xong một phần thanh điều hướng, phần còn lại đang được "giao hàng" từ từ 📦',
     ],
     links: [{ text: 'Xem bản đang làm', href: 'learing/f8/shopee-clone/index.html' }],
+  },
+  // locked: true → nội dung bị mây mù che phủ, ở giữa có ổ khoá (vùng cấm).
+  // Mấy dòng body bên dưới chỉ là chữ giữ chỗ cho có hình dáng sau lớp mây, đừng viết bí mật thật vào đây:
+  // ai mở mã nguồn trang cũng đọc được.
+  poster: {
+    tag: 'Vùng cấm',
+    title: 'Di sản của Trâm Anh',
+    locked: true,
+    body: [
+      'Phía sau lớp mây này là một câu chuyện chưa đến lúc được kể ra.',
+      'Chỉ người giữ chìa khoá mới biết trong đây cất giữ điều gì, và vì sao nó lại nằm ở đây.',
+      'Hẹn một ngày đẹp trời, mây tan thì bạn sẽ thấy.',
+    ],
   },
 };
 

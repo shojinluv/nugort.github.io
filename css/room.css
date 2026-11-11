@@ -328,6 +328,57 @@ body.is-night .progress.is-done {
   color: #5a463f;
 }
 
+/* ---------- Vùng cấm: nội dung bị mây mù che phủ, ở giữa có ổ khoá ---------- */
+.panel.is-locked .panel__body {
+  position: relative;
+  min-height: 190px;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+.panel.is-locked .panel__body p {
+  filter: blur(7px);
+  user-select: none;
+}
+
+/* Lớp mây: nhiều đám mây tròn mờ chồng lên nhau, trôi chầm chậm qua lại */
+.panel.is-locked .panel__body::before {
+  content: '';
+  position: absolute;
+  inset: -20px -60px;
+  background:
+    radial-gradient(60px 40px at 15% 30%, rgba(255, 255, 255, 0.95), transparent 70%),
+    radial-gradient(90px 55px at 45% 20%, rgba(255, 255, 255, 0.9), transparent 70%),
+    radial-gradient(80px 50px at 78% 35%, rgba(255, 255, 255, 0.95), transparent 70%),
+    radial-gradient(100px 60px at 25% 70%, rgba(255, 255, 255, 0.9), transparent 70%),
+    radial-gradient(90px 55px at 62% 75%, rgba(255, 255, 255, 0.95), transparent 70%),
+    radial-gradient(70px 45px at 90% 80%, rgba(255, 255, 255, 0.9), transparent 70%),
+    linear-gradient(rgba(236, 232, 244, 0.72), rgba(236, 232, 244, 0.72));
+  animation: fog 9s ease-in-out infinite alternate;
+}
+
+/* Ổ khoá nằm giữa */
+.panel.is-locked .panel__body::after {
+  content: '🔒';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  font-size: 34px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(60, 30, 20, 0.22);
+  transform: translate(-50%, -50%);
+}
+
+@keyframes fog {
+  from { transform: translateX(-28px); }
+  to { transform: translateX(28px); }
+}
+
 .panel__links {
   display: flex;
   flex-wrap: wrap;
@@ -436,5 +487,6 @@ body.is-night .loader { background: var(--night-2); }
 
 @media (prefers-reduced-motion: reduce) {
   .loader__dot,
-  .progress.is-bump { animation: none; }
+  .progress.is-bump,
+  .panel.is-locked .panel__body::before { animation: none; }
 }

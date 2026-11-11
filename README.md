@@ -11,6 +11,7 @@ bấm vào đồ vật để xem các dự án.
 | 💡 Đèn bàn | Đổi ngày ↔ đêm |
 | 🐱 Mèo Sphynx | Mèo giật mình nói chuyện |
 | 🪴 Cây Monstera | Tưới cây, cây lớn dần |
+| 🖼️ Bức tranh | Mở "Di sản của Trâm Anh": vùng cấm, nội dung bị mây mù và ổ khoá che lại |
 
 Một vài chi tiết nhỏ: đồng hồ treo tường chạy theo giờ thật, mở trang sau 6 giờ tối thì phòng tự chuyển sang
 buổi tối, và có bộ đếm xem bạn đã khám phá hết đồ vật chưa.

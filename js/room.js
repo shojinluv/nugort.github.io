@@ -22,7 +22,7 @@ export function buildRoom(world) {
   buildWindow(room, world);
   buildSunbeam(room, world);
   buildFairyLights(room, world);
-  buildPoster(room);
+  buildPoster(room, world);
   buildStickyNotes(room);
   buildClock(room, world);
 }
@@ -371,60 +371,114 @@ function buildFairyLights(room, world) {
 }
 
 // ---------- Tranh treo trên đầu giường ----------
-function buildPoster(room) {
+function buildPoster(room, world) {
   const tex = canvasTexture(800, 560, (ctx, w, h) => {
-    const bandH = h * 0.26;
-    const sky = ctx.createLinearGradient(0, 0, 0, h - bandH);
+    const sky = ctx.createLinearGradient(0, 0, 0, h);
     sky.addColorStop(0, '#ffd3a1');
     sky.addColorStop(1, '#ff8f8a');
     ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, w, h - bandH);
+    ctx.fillRect(0, 0, w, h);
+
+    // Phần hình bên dưới được vẽ trong khung cao 414 (mặt đất ở y = 414), rồi phóng to 1,2 lần
+    // và dời đi cho mặt đất chạm đúng mép dưới, để bức tranh phủ kín cả khung
+    const bandH = h - 414;
+    ctx.save();
+    ctx.translate(-80, h - 414 * 1.2);
+    ctx.scale(1.2, 1.2);
 
     // Mặt trời sọc kiểu retro
     ctx.save();
     ctx.beginPath();
-    ctx.arc(w / 2, h * 0.5, 140, 0, Math.PI * 2);
+    ctx.arc(w * 0.64, 190, 130, 0, Math.PI * 2);
     ctx.clip();
     ctx.fillStyle = '#fff1c1';
     ctx.fillRect(0, 0, w, h);
     ctx.fillStyle = '#ff9f8c';
-    for (let i = 0; i < 5; i++) ctx.fillRect(0, h * 0.5 + 20 + i * 26, w, 6 + i * 3);
+    for (let i = 0; i < 5; i++) ctx.fillRect(0, 210 + i * 26, w, 6 + i * 3);
     ctx.restore();
 
-    // Núi
+    // Tranh "khát khao tự do": chiếc lồng mở cửa trên đồi, đàn chim bay vút về phía mặt trời
+    const ground = h - bandH;
+    const ink = '#4a2c40';
+
+    // Đồi xa và đồi gần
     ctx.fillStyle = '#e8677a';
     ctx.beginPath();
-    ctx.moveTo(0, h - bandH);
-    ctx.lineTo(180, 230);
-    ctx.lineTo(330, h - bandH - 60);
-    ctx.lineTo(480, 250);
-    ctx.lineTo(w, h - bandH - 40);
-    ctx.lineTo(w, h - bandH);
+    ctx.moveTo(0, ground);
+    ctx.lineTo(0, ground - 60);
+    ctx.quadraticCurveTo(260, ground - 150, 520, ground - 50);
+    ctx.quadraticCurveTo(680, ground - 5, w, ground - 70);
+    ctx.lineTo(w, ground);
     ctx.fill();
     ctx.fillStyle = '#c94f6d';
     ctx.beginPath();
-    ctx.moveTo(0, h - bandH);
-    ctx.lineTo(120, h - bandH - 70);
-    ctx.lineTo(260, h - bandH - 10);
-    ctx.lineTo(560, h - bandH - 110);
-    ctx.lineTo(w, h - bandH);
+    ctx.moveTo(0, ground);
+    ctx.lineTo(0, ground - 30);
+    ctx.quadraticCurveTo(170, ground - 95, 400, ground - 25);
+    ctx.quadraticCurveTo(600, ground + 20, w, ground - 30);
+    ctx.lineTo(w, ground);
     ctx.fill();
 
-    // Dải chữ
-    ctx.fillStyle = '#fff3e6';
-    ctx.fillRect(0, h - bandH, w, bandH);
-    ctx.fillStyle = '#4a2c40';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = '800 76px "Be Vietnam Pro", sans-serif';
-    ctx.fillText('SHOJINLUV', w / 2, h - bandH / 2 - 14);
-    ctx.font = '600 26px "Be Vietnam Pro", sans-serif';
-    ctx.fillStyle = '#c94f6d';
-    ctx.fillText('căn phòng nhỏ', w / 2, h - bandH / 2 + 40);
+    // Chiếc lồng: đáy, vòm nan và móc treo
+    const [cx, base, cw, ch] = [150, ground - 52, 62, 150]; // tâm, đáy, nửa bề ngang, chiều cao
+    ctx.strokeStyle = ink;
+    ctx.fillStyle = ink;
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 5;
+    for (let i = -3; i <= 3; i++) {
+      // mỗi nan cong từ đáy lên chụm ở đỉnh; chừa trống chỗ cửa (hai nan bên phải)
+      if (i === 1 || i === 2) continue;
+      const x = cx + (i / 3) * cw;
+      ctx.beginPath();
+      ctx.moveTo(x, base);
+      ctx.bezierCurveTo(x, base - ch * 0.75, cx + (i / 3) * cw * 0.5, base - ch, cx, base - ch);
+      ctx.stroke();
+    }
+    ctx.fillRect(cx - cw - 6, base - 4, cw * 2 + 12, 10); // đáy lồng
+    ctx.beginPath();
+    ctx.arc(cx, base - ch - 10, 9, 0, Math.PI * 2);      // móc treo
+    ctx.stroke();
+    // Cánh cửa lồng bật mở ra bên phải
+    ctx.save();
+    ctx.translate(cx + cw, base - 6);
+    ctx.rotate(0.5);
+    ctx.lineWidth = 4;
+    ctx.strokeRect(0, -86, 44, 86);
+    for (const dx of [15, 30]) {
+      ctx.beginPath();
+      ctx.moveTo(dx, -86);
+      ctx.lineTo(dx, 0);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Đàn chim: bay theo một đường cong từ cửa lồng lên mặt trời, càng xa càng nhỏ
+    const bird = (x, y, s, tilt) => {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(tilt);
+      ctx.lineWidth = Math.max(2.5, s * 0.2);
+      ctx.beginPath();
+      ctx.moveTo(-s, 0);
+      ctx.quadraticCurveTo(-s * 0.5, -s * 0.75, 0, 0);
+      ctx.quadraticCurveTo(s * 0.5, -s * 0.75, s, 0);
+      ctx.stroke();
+      ctx.restore();
+    };
+    [[262, 300, 30, -0.5], [330, 236, 25, -0.35], [392, 262, 21, -0.6], [430, 180, 19, -0.3],
+      [498, 150, 15, -0.45], [470, 108, 13, -0.2], [556, 100, 11, -0.4], [600, 62, 9, -0.3]]
+      .forEach(([x, y, s, tilt]) => bird(x, y, s, tilt));
+    ctx.restore();
   });
+  // Tranh và khung gom vào một nhóm có id, để rê chuột và bấm vào được như các đồ vật khác
+  // (bấm vào → mở khung "Di sản của Trâm Anh" đang bị khoá, xem content.js)
+  const g = at(new THREE.Group(), -4.975, 3.5, 1.0);
   const poster = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.54), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 }));
-  room.add(at(poster, -4.93, 3.5, 1.0, 0, Math.PI / 2, 0));
-  room.add(at(box(0.05, 1.66, 2.32, '#8a5a3c', 0.02), -4.975, 3.5, 1.0)); // khung tranh (nằm sau tranh)
+  g.add(at(poster, 0.045, 0, 0, 0, Math.PI / 2, 0));
+  g.add(box(0.05, 1.66, 2.32, '#8a5a3c', 0.02)); // khung tranh (nằm sau tranh)
+  g.userData.id = 'poster';
+  world.clickables.poster = g;
+  room.add(g);
 }
 
 // ---------- Giấy note dán tường ----------
