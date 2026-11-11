@@ -23,6 +23,7 @@ export function buildRoom(world) {
   buildSunbeam(room, world);
   buildFairyLights(room, world);
   buildPoster(room, world);
+  buildSolarPanels(room, world);
   buildStickyNotes(room);
   buildClock(room, world);
 }
@@ -481,6 +482,75 @@ function buildPoster(room, world) {
   g.userData.id = 'poster';
   world.clickables.poster = g;
   room.add(g);
+}
+
+// ---------- Dàn pin mặt trời ở mặt ngoài tường sau (mặt đón nắng) ----------
+// Chỉ bung ra khi căn phòng bay ra vũ trụ: mỗi tấm pin treo bằng bản lề ở mép trên,
+// mép dưới chống ra ngoài cho mặt pin ngửa lên đón nắng. Bên dưới cửa sổ có hộp ắc quy báo mức sạc.
+function buildSolarPanels(room, world) {
+  const cells = canvasTexture(256, 256, (ctx, w, h) => {
+    const g = ctx.createLinearGradient(0, 0, w, h);
+    g.addColorStop(0, '#22388f');
+    g.addColorStop(0.5, '#16245c');
+    g.addColorStop(1, '#1d3180');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = 'rgba(150, 180, 255, 0.55)'; // đường kẻ chia ô pin
+    ctx.lineWidth = 2;
+    for (let i = 0; i <= 4; i++) {
+      ctx.beginPath();
+      ctx.moveTo((i * w) / 4, 0);
+      ctx.lineTo((i * w) / 4, h);
+      ctx.stroke();
+    }
+    for (let j = 0; j <= 6; j++) {
+      ctx.beginPath();
+      ctx.moveTo(0, (j * h) / 6);
+      ctx.lineTo(w, (j * h) / 6);
+      ctx.stroke();
+    }
+  });
+  const cellMat = new THREE.MeshStandardMaterial({ map: cells, metalness: 0.55, roughness: 0.3 });
+  const frameMat = new THREE.MeshStandardMaterial({ color: '#c9d2e3', metalness: 0.6, roughness: 0.4 });
+
+  const array = new THREE.Group();
+  room.add(array);
+  const hinges = [];
+  const H = 1.35; // chiều cao một tấm pin
+  // Ba cột bên trái cửa sổ và một cột bên phải, mỗi cột ba tấm
+  for (const [x, w] of [[-4.3, 1.25], [-2.9, 1.25], [-1.5, 1.25], [3.95, 1.5]]) {
+    for (const top of [5.3, 3.75, 2.2]) {
+      const hinge = at(new THREE.Group(), x, top, -5.34); // bản lề ở mép trên, sát mặt ngoài tường
+      hinge.add(at(box(w, H, 0.06, frameMat, 0.02), 0, -H / 2, 0)); // khung nhôm
+      hinge.add(at(new THREE.Mesh(new THREE.PlaneGeometry(w - 0.1, H - 0.1), cellMat), 0, -H / 2, -0.032, 0, Math.PI, 0)); // mặt pin quay ra ngoài
+      array.add(hinge);
+      hinges.push(hinge);
+    }
+  }
+
+  // Hộp ắc quy dưới cửa sổ, có bốn vạch báo mức sạc
+  const battery = at(new THREE.Group(), (WIN.x1 + WIN.x2) / 2, 1.3, -5.42);
+  battery.add(box(1.7, 0.75, 0.24, '#5d6577', 0.04));
+  const bars = [0, 1, 2, 3].map((i) => {
+    const m = new THREE.MeshStandardMaterial({ color: '#1c2a22', emissive: '#3dff9a', emissiveIntensity: 0 });
+    battery.add(at(box(0.26, 0.42, 0.03, m, 0.01), 0.54 - i * 0.36, 0, -0.125));
+    return m;
+  });
+  array.add(battery);
+  array.traverse((o) => { o.userData.noPick = true; });
+
+  world.updaters.push((t) => {
+    const s = world.space;
+    array.visible = s > 0.02;
+    if (!array.visible) return;
+    hinges.forEach((hinge) => { hinge.rotation.x = 0.5 * s; }); // bung ra, ngửa mặt về phía Mặt Trời
+    // Có nắng thì các vạch sạc sáng lần lượt như đang nạp điện; vào bóng Trái Đất (buổi tối) thì chỉ còn một vạch
+    const sun = 1 - world.night;
+    bars.forEach((m, i) => {
+      const charging = (Math.sin(t * 2.5 - i * 0.9) * 0.5 + 0.5) * sun;
+      m.emissiveIntensity = s * (i === 0 ? 1.6 : 0.2 + 1.6 * charging);
+    });
+  });
 }
 
 // ---------- Giấy note dán tường ----------
