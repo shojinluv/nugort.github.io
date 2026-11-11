@@ -55,6 +55,11 @@ function buildComputer(world) {
   const screenMat = new THREE.MeshBasicMaterial({ map: screenTex, toneMapped: false });
   const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.48, 0.88), screenMat);
   g.add(at(screen, 0, 0.85, 0.042));
+  // Logo phát sáng sau lưng màn hình (chỉ thấy khi ra vũ trụ rồi xoay camera ra sau tường):
+  // quả táo há miệng kiểu Pac-Man đang đuổi theo mấy hạt đậu
+  const logoMat = new THREE.MeshBasicMaterial({ map: canvasTexture(256, 256, drawAppleMan), transparent: true, toneMapped: false });
+  g.add(at(new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.5), logoMat), 0, 0.87, -0.042, 0, Math.PI, 0));
+
   let shown = 'false,false';
   world.updaters.push(() => {
     const mode = `${Boolean(world.nightOn)},${world.spaceOn}`;
@@ -85,6 +90,39 @@ function buildComputer(world) {
   });
 
   clickable(world, 'computer', g);
+}
+
+// Logo "táo Pac-Man": thân tròn há miệng hình nêm (Pac-Man), có lõm trên dưới và chiếc lá (quả táo)
+function drawAppleMan(ctx) {
+  const dot = (x, y, r) => {
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  };
+  ctx.fillStyle = '#f4f1ea';
+  // Thân: hình tròn khuyết một miếng nêm ở bên phải làm cái miệng
+  ctx.beginPath();
+  ctx.moveTo(108, 150);
+  ctx.arc(108, 150, 72, 0.6, Math.PI * 2 - 0.6);
+  ctx.closePath();
+  ctx.fill();
+  // Chiếc lá nghiêng phía trên
+  ctx.save();
+  ctx.translate(128, 56);
+  ctx.rotate(-0.7);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 24, 10, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  // Mấy hạt đậu trước miệng, càng xa càng nhỏ
+  dot(196, 150, 10);
+  dot(232, 150, 7);
+  // Khoét bớt: lõm trên, lõm dưới của quả táo và con mắt
+  ctx.globalCompositeOperation = 'destination-out';
+  dot(108, 76, 15);
+  dot(108, 226, 11);
+  dot(122, 112, 9);
+  ctx.globalCompositeOperation = 'source-over';
 }
 
 function drawCode(ctx, w, h, night, space) {
