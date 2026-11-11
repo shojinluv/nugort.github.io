@@ -1,0 +1,231 @@
+/*
+    polish.css – lớp "đánh bóng" thêm vào sau này (11/2026): bo góc và chuyển động cho mượt.
+    Tách riêng thành một file để styles.css và responsive.css gốc từ 2022 vẫn giữ nguyên.
+    Muốn quay về bản gốc chỉ cần bỏ dòng <link> tới file này trong index.html.
+*/
+
+:root {
+    --radius: 10px;
+    --radius-sm: 6px;
+    --ease: cubic-bezier(0.22, 0.8, 0.3, 1);
+}
+
+/* Bấm menu thì cuộn mượt tới mục đó, và chừa chỗ cho thanh header cố định */
+html {
+    scroll-behavior: smooth;
+    scroll-padding-top: var(--nav-heigh);
+}
+
+/* ---------- Header ---------- */
+#nav li a,
+#header .nav-bar,
+#header .nav-bar a,
+#header .nav-search {
+    transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+/* Menu con trượt nhẹ xuống thay vì hiện cái rụp (chỉ áp dụng cho tablet và PC,
+   trên mobile menu con vẫn xổ ra như cũ) */
+@media (min-width: 740px) {
+    #nav .subnav {
+        display: block;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-8px);
+        transition: opacity 0.2s ease, transform 0.25s var(--ease), visibility 0.2s;
+        border-radius: 0 0 var(--radius) var(--radius);
+        overflow: hidden;
+    }
+
+    #nav > li:hover .subnav,
+    #nav > li:focus-within .subnav {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+}
+
+/* ---------- Slider: chữ trồi nhẹ lên khi vừa vào trang ---------- */
+#slider .slider-text-title,
+#slider .slider-text-dsc {
+    animation: riseIn 0.9s var(--ease) both;
+}
+
+#slider .slider-text-title {
+    animation-delay: 0.25s;
+}
+
+#slider .slider-text-dsc {
+    animation-delay: 0.45s;
+}
+
+@keyframes riseIn {
+    from {
+        opacity: 0;
+        transform: translateY(24px);
+    }
+}
+
+/* ---------- Hiện dần khi cuộn tới (class do JS gắn vào, xem cuối index.html) ---------- */
+.reveal {
+    opacity: 0;
+    transform: translateY(28px);
+    transition: opacity 0.7s ease, transform 0.7s var(--ease);
+    transition-delay: var(--reveal-delay, 0s);
+}
+
+.reveal.is-in {
+    opacity: 1;
+    transform: none;
+}
+
+/* ---------- Thành viên ban nhạc ---------- */
+#content .member-avt {
+    border-radius: var(--radius);
+    transition: transform 0.35s var(--ease), box-shadow 0.35s ease;
+}
+
+#content .member-avt:hover {
+    transform: translateY(-6px) scale(1.03);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.25);
+}
+
+/* ---------- Tour ---------- */
+.tickets-list {
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.tickets-list li {
+    transition: background-color 0.2s ease;
+}
+
+.tickets-list li:hover {
+    background-color: #F5F5F5;
+}
+
+.tickets-list li:last-child {
+    border-bottom: none;
+}
+
+.tickets-list .sold-out {
+    border-radius: var(--radius-sm);
+}
+
+/* Thẻ địa điểm: ảnh bo góc trên, phần chữ bo góc dưới, rê chuột thì cả thẻ nhấc lên */
+.place-img {
+    border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.place-body {
+    border-radius: 0 0 var(--radius) var(--radius);
+}
+
+.place-img,
+.place-body {
+    transition: transform 0.35s var(--ease);
+}
+
+.tour-places .col:hover .place-img,
+.tour-places .col:hover .place-body {
+    transform: translateY(-6px);
+}
+
+/* ---------- Nút bấm ---------- */
+.place-buy-btn,
+.contact-form .contact-form-submit,
+#buy-tickets,
+#footer .last-btn {
+    cursor: pointer;
+    transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+
+.place-buy-btn,
+.contact-form .contact-form-submit,
+#buy-tickets {
+    border-radius: var(--radius-sm);
+}
+
+.place-buy-btn:active,
+.contact-form .contact-form-submit:active,
+#buy-tickets:active,
+#footer .last-btn:active {
+    transform: scale(0.96);
+}
+
+/* ---------- Ô nhập liệu ---------- */
+.contact-form .form-control,
+.modal-input {
+    border-radius: var(--radius-sm);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.contact-form .form-control:focus,
+.modal-input:focus {
+    outline: none;
+    border-color: #009688;
+    box-shadow: 0 0 0 3px rgba(0, 150, 136, 0.2);
+}
+
+/* ---------- Footer ---------- */
+#footer .social-network a {
+    display: inline-block;
+    transition: transform 0.25s var(--ease), color 0.2s ease, opacity 0.2s ease;
+}
+
+#footer .social-network a:hover {
+    transform: translateY(-4px);
+    color: #000;
+}
+
+/* ---------- Form mua vé ---------- */
+.modal.open {
+    animation: backdropIn 0.25s ease both;
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+}
+
+.modal-container {
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+    animation: modalFadeIn 0.45s var(--ease);
+}
+
+.modal-heading-close {
+    border-radius: 0 0 0 var(--radius);
+    transition: color 0.2s ease, background-color 0.2s ease, opacity 0.2s ease;
+}
+
+.modal-footer a {
+    transition: opacity 0.2s ease;
+}
+
+.modal-footer a:hover {
+    opacity: 0.7;
+}
+
+@keyframes backdropIn {
+    from {
+        opacity: 0;
+    }
+}
+
+/* ---------- Người dùng đã bật "giảm chuyển động" thì tắt hết hiệu ứng ---------- */
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation: none !important;
+        transition: none !important;
+    }
+
+    .reveal {
+        opacity: 1;
+        transform: none;
+    }
+}

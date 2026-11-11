@@ -10,6 +10,7 @@
     <link rel="shortcut icon" href="./assets/img/favicon.jpg" type="image/x-icon">
     <link rel="stylesheet" href="./assets/css/styles.css">
     <link rel="stylesheet" href="./assets/css/responsive.css">
+    <link rel="stylesheet" href="./assets/css/polish.css">
 </head>
 
 <body>
@@ -356,6 +357,33 @@
                 }
 
             }
+        }
+    </script>
+    <script>
+        // Hiện dần từng khối khi cuộn tới (kiểu dáng nằm trong polish.css)
+        var revealItems = document.querySelectorAll(
+            '.content-section-title, .content-section-slogan, .about-content-section, ' +
+            '.band-members .col, .tickets-list, .tour-places .col, .contact-form, .map-section img, #footer'
+        );
+
+        if ('IntersectionObserver' in window) {
+            var revealObserver = new IntersectionObserver(function (entries) {
+                entries.forEach(function (entry) {
+                    if (!entry.isIntersecting) return;
+                    entry.target.classList.add('is-in');
+                    revealObserver.unobserve(entry.target);
+                });
+            }, { threshold: 0.15 });
+
+            revealItems.forEach(function (item) {
+                // các cột đứng cạnh nhau thì hiện lần lượt, mỗi cột trễ hơn cột trước một chút
+                if (item.classList.contains('col')) {
+                    var order = Array.prototype.indexOf.call(item.parentNode.children, item);
+                    item.style.setProperty('--reveal-delay', order * 0.12 + 's');
+                }
+                item.classList.add('reveal');
+                revealObserver.observe(item);
+            });
         }
     </script>
 </body>
