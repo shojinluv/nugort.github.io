@@ -511,6 +511,18 @@ function drawMilkyWay(ctx, w, h) {
     puff(u * w, h / 2 + Math.sin(u * 40) * 7 + gauss() * 10, 6 + rand() * 18, 'rgba(0, 0, 0, 0.35)');
   }
   ctx.globalCompositeOperation = 'source-over';
+
+  // 3. Làm mịn: các đám mây rất mờ cộng dồn lại để lộ ra vân ô lưới (do màu chỉ có 256 mức).
+  // Thu nhỏ tấm hình còn 1/4 rồi phóng to lại, các điểm ảnh được trộn vào nhau nên vân lưới tan đi.
+  const small = document.createElement('canvas');
+  small.width = w / 4;
+  small.height = h / 4;
+  const sctx = small.getContext('2d');
+  sctx.imageSmoothingQuality = 'high';
+  sctx.drawImage(ctx.canvas, 0, 0, small.width, small.height);
+  ctx.clearRect(0, 0, w, h);
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(small, 0, 0, w, h);
 }
 
 // ---------- Mặt Trời: đặt đúng hướng nắng đang chiếu vào cửa sổ ----------

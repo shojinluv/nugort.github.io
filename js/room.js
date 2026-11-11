@@ -131,7 +131,9 @@ function buildWindow(room, world) {
   room.add(at(box(w + 0.24, 0.12, 0.42, frame, 0.03), cx, WIN.y2 + 0.06, z)); // khung trên
   room.add(at(box(0.12, h, 0.42, frame, 0.03), WIN.x1 - 0.06, cy, z));        // khung trái
   room.add(at(box(0.12, h, 0.42, frame, 0.03), WIN.x2 + 0.06, cy, z));        // khung phải
-  room.add(at(box(w + 0.5, 0.12, 0.7, frame, 0.03), cx, WIN.y1 - 0.06, -4.95)); // bậu cửa nhô vào trong
+  // Bậu cửa nhô vào trong. Đặt cao hơn mép tường bên dưới 6mm, vì hai mặt trùng khít nhau thì hình bị nhấp nháy.
+  // Tương tự, mặt sau bậu cửa thò ra khỏi lưng tường 4cm thay vì nằm trùng với lưng tường.
+  room.add(at(box(w + 0.5, 0.12, 0.74, frame, 0.03), cx, WIN.y1 - 0.06 + 0.006, -4.97));
   room.add(at(box(0.06, h, 0.06, frame, 0), cx, cy, z));                      // song cửa dọc
   room.add(at(box(w, 0.06, 0.06, frame, 0), cx, cy, z));                      // song cửa ngang
 

@@ -203,7 +203,7 @@ function buildLamp(world) {
 function buildMug(world) {
   const g = at(new THREE.Group(), 1.75, 1.56, -3.95);
   g.add(at(cylinder(0.12, 0.11, 0.26, '#ff8a7a', 20), 0, 0.13, 0));
-  g.add(at(cylinder(0.105, 0.105, 0.02, '#5a3420', 20), 0, 0.25, 0));
+  g.add(at(cylinder(0.105, 0.105, 0.02, '#5a3420', 20), 0, 0.254, 0)); // cà phê, nhô hơn miệng cốc một chút cho khỏi nhấp nháy
   g.add(at(new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.022, 8, 16), mat('#ff8a7a')), 0.13, 0.13, 0));
 
   const steam = [0, 1, 2].map(() => {
@@ -326,7 +326,8 @@ function buildPlant(world) {
   g.add(inner);
   inner.add(at(cylinder(0.45, 0.34, 0.8, '#d9774b', 24), 0, 0.4, 0));  // chậu
   inner.add(at(cylinder(0.5, 0.5, 0.12, '#e88a5e', 24), 0, 0.8, 0));   // miệng chậu
-  inner.add(at(cylinder(0.43, 0.43, 0.04, '#5b3b2a', 24), 0, 0.84, 0)); // đất
+  // Mặt đất nhô cao hơn miệng chậu một chút. Hai mặt nằm trùng khít nhau thì hình bị nhấp nháy.
+  inner.add(at(cylinder(0.43, 0.43, 0.04, '#5b3b2a', 24), 0, 0.848, 0)); // đất
 
   const leafMats = [mat('#4caf6e'), mat('#3d9a5d')];
   const count = 8;
@@ -428,7 +429,7 @@ function buildBag(world) {
   const orange = '#ee5a36';
   const deep = '#d94a28';
   g.add(at(box(0.75, 0.9, 0.38, orange, 0.03), 0, 0.45, 0));
-  g.add(at(box(0.77, 0.08, 0.4, deep, 0.02), 0, 0.86, 0)); // viền miệng túi
+  g.add(at(box(0.77, 0.08, 0.4, deep, 0.02), 0, 0.866, 0)); // viền miệng túi (nhô hơn thân túi một chút cho khỏi nhấp nháy)
   const handle = new THREE.TorusGeometry(0.19, 0.025, 8, 24, Math.PI); // nửa vòng tròn
   for (const z of [-0.1, 0.1]) g.add(at(new THREE.Mesh(handle, mat(deep)), 0, 0.9, z));
   g.add(at(cylinder(0.16, 0.16, 0.01, '#ffffff', 24), 0, 0.45, 0.195, Math.PI / 2)); // nhãn dán
