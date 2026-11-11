@@ -463,6 +463,24 @@ camera.position.copy(HOME_TARGET).add(
 camera.lookAt(controls.target);
 flyTo(HOME_TARGET, homePosition(), 2.4, easeOut);
 
+// ===== 15b. Không cho camera zoom xuyên qua tường hay sàn từ bên ngoài =====
+// Căn phòng chỉ có tường sau (z = -5.3), tường trái (x = -5.3) và sàn (y = -0.5); ba phía còn lại để hở.
+// Nhìn từ tâm ra phía camera: nếu tia này đâm vào tường/sàn trước khi ra tới phía hở, và camera đang ở
+// bên ngoài bức tường đó, thì chặn không cho zoom vào gần hơn mặt tường (cộng thêm một khoảng lùi).
+const guardDir = new THREE.Vector3();
+function guardWalls() {
+  const T = controls.target;
+  const dist = guardDir.copy(camera.position).sub(T).length();
+  const d = guardDir.divideScalar(dist);
+  let wall = Infinity; // quãng đường từ tâm tới tường/sàn theo hướng camera
+  let open = Infinity; // quãng đường từ tâm tới phía để hở
+  if (d.x < 0) wall = Math.min(wall, (-5.3 - T.x) / d.x); else if (d.x > 0) open = Math.min(open, (5 - T.x) / d.x);
+  if (d.z < 0) wall = Math.min(wall, (-5.3 - T.z) / d.z); else if (d.z > 0) open = Math.min(open, (5 - T.z) / d.z);
+  if (d.y < 0) wall = Math.min(wall, (-0.5 - 0.9 * world.space - T.y) / d.y); else if (d.y > 0) open = Math.min(open, (WALL_H - T.y) / d.y);
+  const outside = wall < open && dist > wall;
+  controls.minDistance = outside ? Math.max(4, wall + 1.6) : 4;
+}
+
 // ===== 16. Vòng lặp: mỗi khung hình cập nhật mọi thứ một chút rồi vẽ lại =====
 let last = performance.now();
 let firstFrame = true;
@@ -482,7 +500,10 @@ renderer.setAnimationLoop((now) => {
   updateHover(dt);
   updateViewShift(dt);
   if (tween) updateTween(dt);
-  else controls.update(dt);
+  else {
+    guardWalls();
+    controls.update(dt);
+  }
 
   renderer.render(scene, camera);
   if (firstFrame) {

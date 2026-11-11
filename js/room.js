@@ -24,6 +24,8 @@ export function buildRoom(world) {
   buildFairyLights(room, world);
   buildPoster(room, world);
   buildSolarPanels(room, world);
+  buildThrusters(room, world);
+  buildAirlock(room, world);
   buildStickyNotes(room);
   buildClock(room, world);
 }
@@ -552,6 +554,184 @@ function buildSolarPanels(room, world) {
       const charging = (Math.sin(t * 2.5 - i * 0.9) * 0.5 + 0.5) * sun;
       m.emissiveIntensity = s * (i === 0 ? 1.6 : 0.2 + 1.6 * charging);
     });
+  });
+}
+
+// ---------- Động cơ đẩy dưới gầm sàn ----------
+// Chỉ thò ra khi căn phòng bay ra vũ trụ: một tấm vỏ kim loại ốp đáy sàn và bốn ống phụt ở bốn góc.
+// Lửa xanh cháy liu riu lúc trôi, bùng to lúc đang cất cánh hoặc hạ cánh.
+function buildThrusters(room, world) {
+  const hull = canvasTexture(512, 512, (ctx, w, h) => {
+    ctx.fillStyle = '#596275';
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = 'rgba(20, 26, 40, 0.55)'; // đường ghép giữa các tấm vỏ
+    ctx.lineWidth = 3;
+    for (let i = 0; i <= 4; i++) {
+      ctx.strokeRect((i * w) / 4, 0, 0, h);
+      ctx.strokeRect(0, (i * h) / 4, w, 0);
+    }
+    ctx.fillStyle = 'rgba(215, 225, 245, 0.6)'; // đinh tán ở các góc tấm
+    for (let i = 0; i < 4; i++) {
+      for (let j = 0; j < 4; j++) {
+        for (const [dx, dy] of [[14, 14], [114, 14], [14, 114], [114, 114]]) {
+          ctx.beginPath();
+          ctx.arc((i * w) / 4 + dx, (j * h) / 4 + dy, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+  });
+  const hullMat = new THREE.MeshStandardMaterial({ map: hull, metalness: 0.5, roughness: 0.55, emissive: '#93a4c8', emissiveMap: hull, emissiveIntensity: 0 });
+  const bellMat = new THREE.MeshStandardMaterial({ color: '#3b4252', metalness: 0.7, roughness: 0.35, side: THREE.DoubleSide, emissive: '#5a6f96', emissiveIntensity: 0 });
+  const glowMat = new THREE.MeshBasicMaterial({ color: '#bfe4ff', transparent: true, depthWrite: false });
+  const additive = { transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide };
+  const outerMat = new THREE.MeshBasicMaterial({ color: '#3f9bff', ...additive });
+  const coreMat = new THREE.MeshBasicMaterial({ color: '#d9f1ff', ...additive });
+
+  // Ngọn lửa: hình nón gốc ở y = 0, mũi chĩa xuống, kéo dài bằng scale.y
+  const flameGeo = (r, h) => new THREE.ConeGeometry(r, h, 20, 1, true).rotateX(Math.PI).translate(0, -h / 2, 0);
+  const outerGeo = flameGeo(0.4, 1.7);
+  const coreGeo = flameGeo(0.2, 1.1);
+
+  const rig = at(new THREE.Group(), -0.15, -0.5, -0.15); // gốc ở ngay mặt đáy sàn
+  rig.add(at(box(9.7, 0.12, 9.7, hullMat, 0), 0, -0.06, 0));
+  const flames = [];
+  [[-3.5, -3.5], [3.5, -3.5], [-3.5, 3.5], [3.5, 3.5]].forEach(([x, z], i) => {
+    const engine = at(new THREE.Group(), x, 0, z);
+    engine.add(at(cylinder(0.36, 0.36, 0.16, '#8a93a8'), 0, -0.18, 0)); // đế gắn động cơ
+    engine.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.52, 0.7, 28, 1, true), bellMat), 0, -0.6, 0)); // loa phụt
+    engine.add(decoration(at(new THREE.Mesh(new THREE.CircleGeometry(0.27, 24), glowMat), 0, -0.27, 0, Math.PI / 2))); // họng lửa sáng
+    const outer = decoration(at(new THREE.Mesh(outerGeo, outerMat), 0, -0.4, 0));
+    const core = decoration(at(new THREE.Mesh(coreGeo, coreMat), 0, -0.4, 0));
+    engine.add(outer, core);
+    rig.add(engine);
+    flames.push({ outer, core, phase: i * 1.7 });
+  });
+  // Gầm sàn không được Mặt Trời chiếu tới, nên lửa động cơ tự hắt ánh xanh lên vỏ tàu
+  const glow = new THREE.PointLight('#6fb4ff', 0, 11, 1.4);
+  rig.add(at(glow, 0, -2.4, 0));
+  rig.traverse((o) => { o.userData.noPick = true; });
+  room.add(rig);
+
+  world.updaters.push((t) => {
+    const s = world.space;
+    rig.visible = s > 0.02;
+    if (!rig.visible) return;
+    rig.scale.y = Math.max(s, 0.001); // thò dần ra từ gầm sàn
+    // Đang trên đường bay lên (hoặc đáp xuống) thì đẩy mạnh, tới nơi rồi chỉ giữ lửa nhỏ
+    const boost = Math.sin(Math.PI * world.spaceProgress);
+    const power = 0.75 + 1.1 * boost;
+    hullMat.emissiveIntensity = s * (0.22 + 0.2 * boost);
+    bellMat.emissiveIntensity = s * (0.5 + 0.5 * boost);
+    glow.intensity = s * (14 + 30 * boost);
+    outerMat.opacity = 0.5 * s;
+    coreMat.opacity = 0.85 * s;
+    glowMat.opacity = s;
+    flames.forEach(({ outer, core, phase }) => {
+      const flicker = world.reduceMotion ? 1 : 1 + 0.12 * Math.sin(t * 23 + phase) + 0.06 * Math.sin(t * 41 + phase * 2);
+      outer.scale.set(1, power * flicker, 1);
+      core.scale.set(1, power * (2 - flicker), 1);
+    });
+  });
+}
+
+// ---------- Cửa khoang và tên tàu ở mặt ngoài tường trái ----------
+// Cũng chỉ hiện khi ở ngoài vũ trụ. Đèn báo nháy đỏ lúc đang bay lên/đáp xuống, xanh khi đã ổn định;
+// tay quay trên cửa xoay một vòng rồi khoá lại.
+function buildAirlock(room, world) {
+  const metal = new THREE.MeshStandardMaterial({ color: '#c9d2e3', metalness: 0.6, roughness: 0.4 });
+  const dark = new THREE.MeshStandardMaterial({ color: '#5d6577', metalness: 0.5, roughness: 0.5 });
+  const coral = mat('#f08a7b');
+
+  // Nhóm này quay mặt ra ngoài: trục z của nhóm chĩa ra khỏi tường, trục x chạy dọc tường về phía trước phòng
+  const out = at(new THREE.Group(), -5.3, 0, 0, 0, -Math.PI / 2, 0);
+  room.add(out);
+
+  const door = at(new THREE.Group(), 2.3, 0, 0);
+  out.add(door);
+  door.add(at(box(2.4, 3.6, 0.14, metal, 0.05), 0, 1.9, 0.07));        // khung cửa
+  door.add(at(box(1.9, 3.1, 0.1, '#eef1f7', 0.08), 0, 1.85, 0.15));    // cánh cửa
+  door.add(at(box(1.9, 0.08, 0.02, dark, 0), 0, 1.25, 0.203));         // gân ngang trên cánh cửa
+  // Vạch cảnh báo vàng đen ở ngưỡng cửa
+  const stripes = canvasTexture(256, 32, (ctx, w, h) => {
+    ctx.fillStyle = '#f4c542';
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#2b2f3a';
+    for (let x = -h; x < w; x += 40) {
+      ctx.beginPath();
+      ctx.moveTo(x, h);
+      ctx.lineTo(x + 20, h);
+      ctx.lineTo(x + 20 + h, 0);
+      ctx.lineTo(x + h, 0);
+      ctx.fill();
+    }
+  });
+  door.add(at(new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.3), new THREE.MeshStandardMaterial({ map: stripes, roughness: 0.6 })), 0, 0.33, 0.143));
+
+  // Ô kính tròn: hắt ra chút ánh đèn ấm từ trong phòng
+  const glass = new THREE.MeshStandardMaterial({ color: '#2a3a5c', emissive: '#ffd9a0', emissiveIntensity: 0.5, roughness: 0.2 });
+  door.add(at(new THREE.Mesh(new THREE.CircleGeometry(0.42, 32), glass), 0, 2.55, 0.203));
+  door.add(at(new THREE.Mesh(new THREE.TorusGeometry(0.44, 0.06, 12, 40), coral), 0, 2.55, 0.205));
+
+  // Tay quay khoá cửa
+  const wheel = at(new THREE.Group(), 0, 1.25, 0.3);
+  wheel.add(new THREE.Mesh(new THREE.TorusGeometry(0.27, 0.035, 10, 32), dark));
+  for (let i = 0; i < 3; i++) wheel.add(at(box(0.54, 0.05, 0.04, dark, 0.01), 0, 0, 0, 0, 0, (i * Math.PI) / 3));
+  door.add(wheel);
+  door.add(at(cylinder(0.06, 0.06, 0.12, dark, 12), 0, 1.25, 0.24, Math.PI / 2)); // trục tay quay
+
+  // Đèn báo trên cửa, bảng phím và tay vịn bên cạnh
+  const lampMat = new THREE.MeshStandardMaterial({ color: '#2a2f38', emissive: '#ff4d4d', emissiveIntensity: 0 });
+  door.add(at(box(0.5, 0.16, 0.08, lampMat, 0.03), 0, 3.86, 0.1));
+  door.add(at(box(0.3, 0.44, 0.07, dark, 0.02), -1.5, 1.6, 0.035));
+  const keyMat = new THREE.MeshStandardMaterial({ color: '#1c2a22', emissive: '#3dff9a', emissiveIntensity: 0 });
+  door.add(at(box(0.2, 0.1, 0.02, keyMat, 0), -1.5, 1.72, 0.075));
+  door.add(at(cylinder(0.035, 0.035, 1.5, metal, 10), 1.45, 1.75, 0.16));
+  door.add(at(box(0.07, 0.07, 0.16, metal, 0.01), 1.45, 2.45, 0.08));
+  door.add(at(box(0.07, 0.07, 0.16, metal, 0.01), 1.45, 1.05, 0.08));
+
+  // Tên tàu sơn thẳng lên tường, kèm dấu chân mèo
+  const name = canvasTexture(1024, 256, (ctx, w, h) => {
+    ctx.fillStyle = '#e8695a';
+    const paw = (x, y, r) => {
+      ctx.beginPath();
+      ctx.ellipse(x, y + r * 0.35, r * 0.62, r * 0.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      for (const [dx, dy] of [[-0.62, -0.3], [-0.22, -0.68], [0.22, -0.68], [0.62, -0.3]]) {
+        ctx.beginPath();
+        ctx.ellipse(x + dx * r, y + dy * r, r * 0.2, r * 0.26, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    };
+    paw(84, 104, 72);
+    ctx.textBaseline = 'middle';
+    let size = 118;
+    do {
+      size -= 2;
+      ctx.font = `800 ${size}px "Be Vietnam Pro", sans-serif`;
+    } while (ctx.measureText('SHOJINLUV-01').width > w - 190);
+    ctx.fillText('SHOJINLUV-01', 172, 100);
+    ctx.fillStyle = '#9a7f76';
+    ctx.font = '600 38px "Be Vietnam Pro", sans-serif';
+    ctx.fillText('TÀU VŨ TRỤ · CĂN PHÒNG NHỎ', 176, 196);
+  });
+  const nameMat = new THREE.MeshStandardMaterial({ map: name, transparent: true, roughness: 0.8 });
+  out.add(decoration(at(new THREE.Mesh(new THREE.PlaneGeometry(5.2, 1.3), nameMat), -1.75, 3.9, 0.006)));
+
+  out.traverse((o) => { o.userData.noPick = true; });
+
+  world.updaters.push((t) => {
+    const s = world.space;
+    out.visible = s > 0.02;
+    if (!out.visible) return;
+    door.scale.z = Math.max(s, 0.001); // cửa trồi dần ra khỏi mặt tường
+    nameMat.opacity = s;
+    wheel.rotation.z = -s * Math.PI * 2;
+    const sealed = s > 0.995;
+    lampMat.emissive.set(sealed ? '#3dff9a' : '#ff4d4d');
+    lampMat.emissiveIntensity = sealed ? 1.4 : (Math.sin(t * 9) > 0 ? 1.8 : 0.15);
+    keyMat.emissiveIntensity = 1.2 * s;
+    glass.emissiveIntensity = 0.45 + 0.5 * world.night;
   });
 }
 
