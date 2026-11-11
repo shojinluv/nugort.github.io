@@ -47,7 +47,7 @@ try {
 }
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;               // bật đổ bóng
-renderer.shadowMap.type = THREE.PCFShadowMap;     // kiểu bóng mềm, viền không bị răng cưa
+renderer.shadowMap.type = THREE.PCFSoftShadowMap; // kiểu bóng mềm nhất, viền bóng được làm nhoè cho khỏi răng cưa
 renderer.toneMapping = THREE.NeutralToneMapping;  // giữ màu pastel tươi, không bị cháy sáng
 
 // ===== 2. Scene: "sân khấu" chứa mọi thứ =====
@@ -78,8 +78,12 @@ const hemi = new THREE.HemisphereLight('#fff4ea', '#d8b89a', 2.2); // ánh sáng
 const sun = new THREE.DirectionalLight('#fff0d4', 3.2);           // nắng chiếu qua cửa sổ
 sun.position.copy(SUN_DIR).multiplyScalar(-25);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
-Object.assign(sun.shadow.camera, { left: -10, right: 10, top: 10, bottom: -10, near: 1, far: 60 });
+// Bóng đổ được vẽ lên một tấm "bản đồ bóng". Tấm càng nhiều điểm ảnh và vùng phủ càng hẹp thì viền bóng càng mịn.
+// Máy tính dùng tấm 4096 điểm ảnh; điện thoại (màn hẹp) dùng 2048 cho nhẹ máy.
+const shadowSize = Math.min(window.innerWidth, window.innerHeight) < 700 ? 2048 : 4096;
+sun.shadow.mapSize.set(shadowSize, shadowSize);
+sun.shadow.radius = 2.5; // nhoè viền bóng thêm một chút
+Object.assign(sun.shadow.camera, { left: -9, right: 9, top: 9, bottom: -9, near: 1, far: 60 });
 sun.shadow.bias = -0.0004;
 sun.shadow.normalBias = 0.03;
 const fill = new THREE.DirectionalLight('#ffe6d6', 1.3); // đèn phụ phía trước cho đồ vật có khối
