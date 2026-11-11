@@ -1,105 +1,148 @@
-<!DOCTYPE html>
-<html lang="en">
-
+<!doctype html>
+<html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shopee by Nugỏrt</title>
-    <link rel="shortcut icon" href="./assets/img/Shopee-favicon.png" type="image/x-icon">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css"
-        integrity="sha512-NhSC1YmyruXifcj/KFRWoC561YpHpc5Jtzgvbuzx5VozKpWvQ+4nXhPdFgmx8xqexRcpAglTj9sIBWINXa8x5w=="
-        crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <link rel="stylesheet" href="./assets/css/base.css">
-    <link rel="stylesheet" href="./assets/css/main.css">
-    <script src="https://kit.fontawesome.com/5e3d8c980a.js" crossorigin="anonymous"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;700&display=swap');
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chợ Nugỏrt · Sàn đồ lặt vặt cho căn phòng nhỏ</title>
+  <meta name="description" content="Trang chủ một sàn thương mại điện tử tự dựng bằng HTML, CSS và JavaScript thuần. Bài tập giao diện của Shojinluv.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛍️</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;800&display=swap">
+  <link rel="stylesheet" href="assets/css/style.css">
 </head>
-
 <body>
-    <div class="app">
-        <header class="header">
-            <div class="grid">
-                <nav class="navbar">
-                    <ul class="navbar__list">
-                        <li class="navbar__list-item navbar__list-item--has-qr-code navbar__list-item--separate">
-                            Vào cửa hàng trên ứng dụng Nugỏrt
+  <!-- Bộ icon SVG dùng chung: gọi lại bằng <svg><use href="#i-..."></use></svg> -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="m16.5 16.5 4.5 4.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+      <symbol id="i-cart" viewBox="0 0 24 24"><path d="M3 4h2.5l2.2 10.5h10.6L20.5 7H7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="19" r="1.6" fill="currentColor"/><circle cx="17" cy="19" r="1.6" fill="currentColor"/></symbol>
+      <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.600-7 10-7 10Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+      <symbol id="i-star" viewBox="0 0 24 24"><path fill="currentColor" d="m12 3 2.7 5.6 6.1.8-4.500 4.300 1.100 6.100L12 16.900 6.600 19.800l1.100-6.100L3.200 9.400l6.100-.800Z"/></symbol>
+      <symbol id="i-list" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+      <symbol id="i-bag" viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6L5 8Z" fill="currentColor"/><path d="M9 8V7a3 3 0 0 1 6 0v1" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+    </defs>
+  </svg>
 
-                            <!-- Navbar QR code -->
-                            <div class="navbar__qr">
-                                <img src="./assets/img/DowloadApp-QR.png" alt="QR-Code" class="navbar__qr-img">
-                                <div class="navbar__qr-dowload-app">
-                                    <img src="./assets/img/AppStore.png" alt="Dowload link"
-                                        class="navbar__qr-dowload-app-link">
-                                    <img src="./assets/img/GooglePlay.png" alt="Dowload link"
-                                        class="navbar__qr-dowload-app-link">
-                                    <img src="./assets/img/AppGallery.png" alt="Dowload link"
-                                        class="navbar__qr-dowload-app-link">
-                                </div>
-                            </div>
-                        </li>
-                        <li class="navbar__list-item">
-                            <span class="navbar__list-item--no-pointer">
-                                Kết nối
-                            </span>
-                            <a href="#" class="navbar__list-item-link"><i
-                                    class="navbar__icon fa-brands fa-facebook"></i></a>
-                            <a href="#" class="navbar__list-item-link"><i
-                                    class="navbar__icon fa-brands fa-instagram"></i></a>
-                        </li>
-                    </ul>
+  <header class="header">
+    <div class="wrap">
+      <nav class="topbar" aria-label="Liên kết phụ">
+        <ul>
+          <li><a href="../../../index.html">← Về căn phòng nhỏ</a></li>
+          <li class="hide-sm">Giao hàng bằng tên lửa, chậm nhất 3 năm ánh sáng</li>
+        </ul>
+        <ul>
+          <li><button type="button" data-auth="register">Đăng ký</button></li>
+          <li><button type="button" data-auth="login">Đăng nhập</button></li>
+        </ul>
+      </nav>
 
-                    <ul class="navbar__list">
-                        <li class="navbar__list-item">
-                            <a href="#" class="navbar__list-item-link">
-                                <i class="navbar__icon fa-solid fa-bell"></i>
-                                Thông báo
-                            </a>
-                            <div class="navbar__notify">
-                                <header class="navbar__notify-header">
-                                    <h3>Thông báo mới nhận</h3>
-                                </header>
-                                <ul class="navbar__notify-list">
-                                    <li class="navbar__notify-item">
-                                        <a href="#" class="navbar__notify-link">
-                                            <img src="./assets/img/navbar__notify/macbook-pro-14-16inch.jpg" alt="img"
-                                                class="navbar__notify-img">
-                                            <div class="navbar__notify-info">
-                                                <span class="navbar__notify-info-name">
-                                                    Mỹ phẩm quần què
-                                                </span>
-                                                <span class="navbar__notify-info-desc">
-                                                    Mỹ phẩm quần què chính hiệu con Bà Triệu
-                                                </span>
-                                            </div>
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
-                        <li class="navbar__list-item">
-                            <a href="#" class="navbar__list-item-link">
-                                <i class="navbar__icon fa-solid fa-circle-question"></i>
-                                Trợ giúp
-                            </a>
-                        </li>
-                        <li class="navbar__list-item navbar__list-item--strong navbar__list-item--separate">Đăng ký</li>
-                        <li class="navbar__list-item navbar__list-item--strong">Đăng nhập</li>
-                    </ul>
-                </nav>
+      <div class="mainbar">
+        <a class="logo" href="./" aria-label="Chợ Nugỏrt, về trang chủ">
+          <svg class="logo__icon" aria-hidden="true"><use href="#i-bag"></use></svg>
+          <span>Chợ <b>Nugỏrt</b></span>
+        </a>
+
+        <form class="search" id="search" role="search">
+          <label class="sr-only" for="search-input">Tìm sản phẩm</label>
+          <input id="search-input" type="search" placeholder="Tìm bàn phím, hạt cho mèo, vé lên Sao Hỏa…" autocomplete="off">
+          <button type="submit" aria-label="Tìm"><svg aria-hidden="true"><use href="#i-search"></use></svg></button>
+        </form>
+
+        <div class="cart" id="cart">
+          <button class="cart__btn" id="cart-btn" type="button" aria-expanded="false" aria-controls="cart-panel">
+            <svg aria-hidden="true"><use href="#i-cart"></use></svg>
+            <span class="sr-only">Giỏ hàng</span>
+            <span class="cart__count" id="cart-count" hidden>0</span>
+          </button>
+          <div class="cart__panel" id="cart-panel" hidden>
+            <h2>Giỏ hàng</h2>
+            <ul class="cart__list" id="cart-list"></ul>
+            <p class="cart__empty" id="cart-empty">Giỏ còn trống trơn. Mèo nhìn bạn với ánh mắt thất vọng.</p>
+            <div class="cart__foot" id="cart-foot" hidden>
+              <span>Tổng: <b id="cart-total"></b></span>
+              <button class="btn btn--primary" id="checkout" type="button">Thanh toán</button>
             </div>
-        </header>
-
-        <div class="container">
-
+          </div>
         </div>
-
-        <footer class="footer">
-
-        </footer>
+      </div>
     </div>
-</body>
+  </header>
 
+  <main class="wrap layout">
+    <aside class="sidebar">
+      <h2><svg aria-hidden="true"><use href="#i-list"></use></svg> Danh mục</h2>
+      <ul class="cats" id="cats"></ul>
+    </aside>
+
+    <section class="content" aria-label="Sản phẩm">
+      <div class="toolbar">
+        <span class="toolbar__label hide-sm">Sắp xếp theo</span>
+        <div class="toolbar__sorts" id="sorts">
+          <button class="btn is-active" type="button" data-sort="popular">Phổ biến</button>
+          <button class="btn" type="button" data-sort="newest">Mới nhất</button>
+          <button class="btn" type="button" data-sort="sold">Bán chạy</button>
+        </div>
+        <label class="sr-only" for="price-sort">Sắp xếp theo giá</label>
+        <select class="select" id="price-sort">
+          <option value="">Giá</option>
+          <option value="asc">Giá: thấp đến cao</option>
+          <option value="desc">Giá: cao đến thấp</option>
+        </select>
+        <span class="toolbar__count" id="result-count" aria-live="polite"></span>
+      </div>
+
+      <ul class="grid" id="grid"></ul>
+      <p class="none" id="none" hidden>Không tìm thấy món nào. Thử từ khóa khác, hoặc hỏi con mèo xem nó giấu ở đâu.</p>
+      <nav class="pager" id="pager" aria-label="Phân trang"></nav>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap footer__cols">
+      <div>
+        <h3>Chăm sóc khách hàng</h3>
+        <ul><li>Trung tâm trợ giúp</li><li>Hướng dẫn mua hàng</li><li>Đổi trả trong 7 ngày Trái Đất</li></ul>
+      </div>
+      <div>
+        <h3>Về Chợ Nugỏrt</h3>
+        <ul><li>Giới thiệu</li><li>Tuyển dụng (cần người dọn lông mèo)</li><li>Điều khoản</li></ul>
+      </div>
+      <div>
+        <h3>Thanh toán</h3>
+        <ul><li>Tiền mặt</li><li>Chuyển khoản</li><li>Cá khô</li></ul>
+      </div>
+      <div>
+        <h3>Vận chuyển</h3>
+        <ul><li>Xe máy</li><li>Tên lửa SHOJINLUV-01</li><li>Mèo ngậm tha tới</li></ul>
+      </div>
+    </div>
+    <p class="footer__note wrap">Đây là trang bài tập giao diện của Shojinluv. Sản phẩm, giá cả và đơn hàng đều là bịa, không mua bán thật.</p>
+  </footer>
+
+  <!-- Hộp đăng nhập / đăng ký -->
+  <div class="modal" id="auth" hidden>
+    <div class="modal__backdrop" data-close></div>
+    <div class="modal__box" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+      <div class="modal__head">
+        <h2 id="auth-title">Đăng nhập</h2>
+        <button class="modal__switch" id="auth-switch" type="button">Đăng ký</button>
+      </div>
+      <form id="auth-form" novalidate>
+        <label>Email<input type="email" name="email" autocomplete="off" placeholder="meo@canphongnho.vn"></label>
+        <label>Mật khẩu<input type="password" name="password" autocomplete="off" placeholder="••••••••"></label>
+        <label id="auth-repeat" hidden>Nhập lại mật khẩu<input type="password" name="repeat" autocomplete="off" placeholder="••••••••"></label>
+        <p class="modal__msg" id="auth-msg" role="status"></p>
+        <div class="modal__actions">
+          <button class="btn" type="button" data-close>Trở lại</button>
+          <button class="btn btn--primary" id="auth-submit" type="submit">Đăng nhập</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="assets/js/app.js"></script>
+</body>
 </html>
