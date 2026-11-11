@@ -145,29 +145,60 @@ export function buildSpace(world) {
   skyTarget(sun.group, 'sun', 7);
   planets.list.forEach((p) => skyTarget(p.group, p.id, 2.6));
 
+  // Đường bay lên: căn phòng đứng yên, Trái Đất thì lùi xa dần.
+  // Lúc bắt đầu, Trái Đất nằm ngay dưới gầm sàn như bệ phóng; bay xong thì về chỗ quen thuộc ở góc dưới bên trái.
+  // Trái Đất ngoài vũ trụ được thu nhỏ cho gọn khung hình, nên lúc còn ở mặt đất phải phóng to lên GROUND_SCALE lần,
+  // không thì căn phòng trông to bằng cả một châu lục. Bay càng cao thì thu dần về cỡ bình thường.
+  const GROUND_SCALE = 5;
+  const PAD = new THREE.Vector3(-0.15, -0.5, -0.15); // tâm mặt đáy sàn
+  const earthHome = earth.group.position.clone();
+  const awayDir = earthHome.clone().sub(PAD);
+  const H1 = awayDir.length() - earth.R; // độ cao khi đã lên tới quỹ đạo
+  const H0 = 1.2;                          // độ cao lúc còn trên bệ phóng: vừa đủ cho các ống phụt
+  awayDir.normalize();
+  const downDir = new THREE.Vector3(0, -1, 0);
+  const turn = new THREE.Quaternion().setFromUnitVectors(downDir, awayDir);
+  const q = new THREE.Quaternion();
+  const dir = new THREE.Vector3();
+
   world.updaters.push((t, dt) => {
-    const s = world.space;
-    group.visible = s > 0.001;
+    const p = world.spaceProgress;
+    group.visible = p > 0.001;
     if (group.visible) {
+      // Ba nhịp của chuyến bay: Trái Đất hiện ra dưới chân (p 0 → 0,1), rời bệ phóng và lên cao dần,
+      // ra khỏi bầu khí quyển thì sao trời mới hiện (p 0,4 → 0,85). Hạ cánh thì chạy ngược lại.
+      const ground = smooth(clamp01(p / 0.1));
+      const lift = smooth(clamp01((p - 0.1) / 0.9));
+      const sky = smooth(clamp01((p - 0.4) / 0.45));
+
+      // Độ cao tăng theo cấp số nhân: lúc đầu nhích chậm, càng lên càng vọt nhanh như tên lửa thật
+      const h = H0 * (H1 / H0) ** lift;
+      const k = GROUND_SCALE ** (1 - lift);
+      earth.group.scale.setScalar(k);
+      // Tầng mây luôn nằm sát mặt đất một khoảng cố định, không phình theo k (để mây không trồi lên xuyên qua sàn)
+      earth.clouds.scale.setScalar((1 + 0.012 / k) / 1.012);
+      dir.copy(downDir).applyQuaternion(q.identity().slerp(turn, lift));
+      earth.group.position.copy(PAD).addScaledVector(dir, earth.R * k + h);
+
       // Sao lấp lánh: mỗi lớp sao sáng tối lệch nhịp nhau
       stars.layers.forEach((m, i) => {
-        m.opacity = s * (0.75 + 0.25 * Math.sin(t * (0.8 + i * 0.6) + i * 2));
+        m.opacity = sky * (0.75 + 0.25 * Math.sin(t * (0.8 + i * 0.6) + i * 2));
       });
       stars.group.rotation.y = t * 0.003; // cả bầu trời trôi rất chậm, như đang bay quanh quỹ đạo
-      milkyWay.material.opacity = s;
-      milkyWay.starsMat.opacity = s * 0.9;
-      sun.update(s, world.night, t);
-      planets.update(s, t);
+      milkyWay.material.opacity = sky;
+      milkyWay.starsMat.opacity = sky * 0.9;
+      sun.update(sky, world.night, t);
+      planets.update(sky, t);
 
       earth.surface.rotation.y += dt * 0.012; // Trái Đất tự quay
       earth.clouds.rotation.y += dt * 0.018;  // mây trôi nhanh hơn mặt đất một chút
-      earth.surfaceMat.opacity = s;
+      earth.surfaceMat.opacity = ground;
       earth.surfaceMat.emissiveIntensity = world.night * 1.4; // ban đêm thì đèn thành phố sáng lên
-      earth.cloudMat.opacity = s * 0.9;
-      earth.haloMat.opacity = s * (0.85 - 0.35 * world.night);
-      moon.material.opacity = s;
+      earth.cloudMat.opacity = ground * 0.9;
+      earth.haloMat.opacity = ground * (0.85 - 0.35 * world.night);
+      moon.material.opacity = sky;
 
-      shootingStar(dt, s);
+      shootingStar(dt, sky);
     }
     updateFloaters(world, t, dt);
   });
@@ -249,7 +280,7 @@ function buildEarth(group) {
   clouds.renderOrder = -2;
   halo.renderOrder = -1;
   earth.add(surface, clouds, halo);
-  return { group: earth, surface, clouds, surfaceMat, cloudMat, haloMat };
+  return { group: earth, R, surface, clouds, surfaceMat, cloudMat, haloMat };
 }
 
 // Lục địa: mỗi lục địa là một chuỗi hình tròn chồng lên nhau, nối đuôi nhau theo kiểu "bước ngẫu nhiên"

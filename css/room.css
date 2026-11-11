@@ -45,24 +45,35 @@ body::before {
   transition: opacity 1.2s ease;
 }
 
-/* Lớp nền vũ trụ (có vài đám tinh vân tím, xanh) phủ lên trên cả nền ngày lẫn nền đêm */
+/* Lớp nền vũ trụ (có vài đám tinh vân tím, xanh) phủ lên trên cả nền ngày lẫn nền đêm.
+   Trên cùng là lớp trời xanh của bầu khí quyển: lúc căn phòng mới cất cánh thì trời xanh đậm dần,
+   bay càng cao trời càng tối rồi đen hẳn. Hai biến --space-bg và --atmo do main.js cập nhật theo
+   từng khung hình, để nền khớp đúng độ cao của căn phòng. */
 body::after {
   content: '';
   position: fixed;
   inset: 0;
   z-index: -1;
   background:
+    linear-gradient(to top, rgb(150 200 245 / var(--atmo, 0)) 0%, rgb(72 132 222 / var(--atmo, 0)) 55%, rgb(34 74 168 / var(--atmo, 0)) 100%),
     radial-gradient(38% 30% at 18% 78%, rgba(124, 92, 214, 0.28), transparent 70%),
     radial-gradient(34% 26% at 84% 22%, rgba(64, 140, 220, 0.22), transparent 70%),
     radial-gradient(120% 90% at 50% 30%, var(--space-1) 0%, var(--space-2) 100%);
-  opacity: 0;
-  transition: opacity 1.6s ease;
+  opacity: var(--space-bg, 0);
+}
+
+/* Ban đêm thì bầu khí quyển là trời đêm xanh thẫm */
+body.is-night::after {
+  background:
+    linear-gradient(to top, rgb(52 72 140 / var(--atmo, 0)) 0%, rgb(30 44 104 / var(--atmo, 0)) 55%, rgb(18 24 66 / var(--atmo, 0)) 100%),
+    radial-gradient(38% 30% at 18% 78%, rgba(124, 92, 214, 0.28), transparent 70%),
+    radial-gradient(34% 26% at 84% 22%, rgba(64, 140, 220, 0.22), transparent 70%),
+    radial-gradient(120% 90% at 50% 30%, var(--space-1) 0%, var(--space-2) 100%);
 }
 
 body.is-night,
 body.is-space { color: var(--night-ink); }
 body.is-night::before { opacity: 1; }
-body.is-space::after { opacity: 1; }
 
 #scene {
   position: fixed;

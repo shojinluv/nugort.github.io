@@ -71,10 +71,11 @@ function buildFloor(room, world) {
   const shadowMat = new THREE.MeshBasicMaterial({ map: blob, transparent: true, depthWrite: false });
   const shadow = new THREE.Mesh(new THREE.PlaneGeometry(22, 22), shadowMat);
   room.add(decoration(at(shadow, 0, -0.9, 0, -Math.PI / 2)));
-  // Ngoài vũ trụ không có mặt đất nào để đổ bóng xuống, nên vệt bóng mờ đi
+  // Cất cánh: vệt bóng mờ dần khi căn phòng rời khỏi mặt đất (ngoài vũ trụ không có gì để đổ bóng xuống)
   world.updaters.push(() => {
-    shadowMat.opacity = 1 - world.space;
-    shadow.visible = world.space < 0.999;
+    const fade = THREE.MathUtils.smoothstep(world.spaceProgress, 0.1, 0.35);
+    shadowMat.opacity = 1 - fade;
+    shadow.visible = fade < 0.999;
   });
 }
 

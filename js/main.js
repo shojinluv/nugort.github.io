@@ -510,6 +510,18 @@ function guardWalls() {
   controls.minDistance = outside ? Math.max(4, wall + 1.6) : 4;
 }
 
+// ===== 15c. Nền trang theo độ cao của căn phòng =====
+// Vừa rời mặt đất: nền chuyển sang trời xanh của bầu khí quyển. Lên cao dần: trời tối lại thành vũ trụ.
+// Chỉ ghi vào CSS khi giá trị đổi, để trình duyệt khỏi phải vẽ lại nền mỗi khung hình.
+const skyVars = { bg: -1, atmo: -1 };
+function updateSkyBackground(p) {
+  const ss = THREE.MathUtils.smoothstep;
+  const bg = Math.round(ss(p, 0.04, 0.3) * 1000) / 1000;
+  const atmo = Math.round(ss(p, 0.04, 0.25) * (1 - ss(p, 0.35, 0.8)) * 1000) / 1000;
+  if (bg !== skyVars.bg) document.body.style.setProperty('--space-bg', String((skyVars.bg = bg)));
+  if (atmo !== skyVars.atmo) document.body.style.setProperty('--atmo', String((skyVars.atmo = atmo)));
+}
+
 // ===== 16. Vòng lặp: mỗi khung hình cập nhật mọi thứ một chút rồi vẽ lại =====
 let last = performance.now();
 let firstFrame = true;
@@ -518,10 +530,11 @@ renderer.setAnimationLoop((now) => {
   last = now;
   const t = now / 1000;
 
-  // Cất cánh / hạ cánh mất khoảng 2,6 giây (nếu máy đang bật "giảm chuyển động" thì gần như tức thì)
-  const step = dt / (reduceMotion ? 0.3 : 2.6);
+  // Cất cánh / hạ cánh mất khoảng 4,5 giây (nếu máy đang bật "giảm chuyển động" thì gần như tức thì)
+  const step = dt / (reduceMotion ? 0.3 : 4.5);
   world.spaceProgress = THREE.MathUtils.clamp(world.spaceProgress + (spaceTarget ? step : -step), 0, 1);
   world.space = THREE.MathUtils.smoothstep(world.spaceProgress, 0, 1);
+  updateSkyBackground(world.spaceProgress);
 
   night += (Number(nightTarget) - night) * Math.min(1, dt * 2.2);
   applyNight(night);
