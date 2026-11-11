@@ -600,15 +600,68 @@ function drawSunRays(ctx, w) {
 //  speed: trôi bao nhiêu độ mỗi giây (đã tua nhanh cho vui; thật ra chậm hơn rất rất nhiều)
 //  swing: với sao Thuỷ, sao Kim: chỉ đung đưa qua lại quanh Mặt Trời, xa nhất bấy nhiêu độ
 //  size:  bán kính (đã phóng to lên nhiều lần để nhìn ra được hình tròn)
+//  au:    khoảng cách thật tới Mặt Trời (đơn vị thiên văn, Trái Đất = 1), dùng để tính hành tinh được chiếu sáng bao nhiêu
 const PLANETS = [
-  { id: 'mercury', swing: 26, speed: 0.05, size: 0.28, glow: '#e6ddcc', draw: (c, w, h) => paintSpots(c, w, h, '#a9a39b', '#7f7a73') },
-  { id: 'venus', swing: 44, speed: 0.02, size: 0.45, glow: '#fff1c4', draw: (c, w, h) => paintBands(c, w, h, ['#f3e2b6', '#e9d29b', '#f7ecc9']) },
-  { id: 'mars', at: 64, speed: 0.25, size: 0.35, glow: '#ff9a6b', draw: paintMars },
-  { id: 'jupiter', at: 47, speed: 0.08, size: 0.8, glow: '#ffe2b8', draw: paintJupiter },
-  { id: 'saturn', at: 76, speed: 0.05, size: 0.65, glow: '#ffe9b0', ring: true, draw: (c, w, h) => paintBands(c, w, h, ['#ecdcaa', '#dcc48d', '#f1e4bd', '#cfb57c']) },
-  { id: 'uranus', at: 104, speed: 0.03, size: 0.42, glow: '#b6f0f5', draw: (c, w, h) => paintBands(c, w, h, ['#a8e4ea', '#9dd9e2']) },
-  { id: 'neptune', at: 128, speed: 0.02, size: 0.42, glow: '#8fb0ff', draw: (c, w, h) => paintBands(c, w, h, ['#4774dd', '#3c63c9', '#5a86ea']) },
+  { id: 'mercury', au: 0.387, swing: 26, speed: 0.05, size: 0.28, glow: '#e6ddcc', draw: (c, w, h) => paintSpots(c, w, h, '#a9a39b', '#7f7a73') },
+  { id: 'venus', au: 0.723, swing: 44, speed: 0.02, size: 0.45, glow: '#fff1c4', draw: (c, w, h) => paintBands(c, w, h, ['#f3e2b6', '#e9d29b', '#f7ecc9']) },
+  { id: 'mars', au: 1.524, at: 64, speed: 0.25, size: 0.35, glow: '#ff9a6b', draw: paintMars },
+  { id: 'jupiter', au: 5.203, at: 47, speed: 0.08, size: 0.8, glow: '#ffe2b8', draw: paintJupiter },
+  { id: 'saturn', au: 9.537, at: 76, speed: 0.05, size: 0.65, glow: '#ffe9b0', ring: true, draw: (c, w, h) => paintBands(c, w, h, ['#ecdcaa', '#dcc48d', '#f1e4bd', '#cfb57c']) },
+  { id: 'uranus', au: 19.19, at: 104, speed: 0.03, size: 0.42, glow: '#b6f0f5', draw: (c, w, h) => paintBands(c, w, h, ['#a8e4ea', '#9dd9e2']) },
+  { id: 'neptune', au: 30.07, at: 128, speed: 0.02, size: 0.42, glow: '#8fb0ff', draw: (c, w, h) => paintBands(c, w, h, ['#4774dd', '#3c63c9', '#5a86ea']) },
 ];
+
+// Hành tinh tự tính ánh nắng riêng thay vì dùng đèn trong cảnh. Đèn trong cảnh chiếu theo một hướng chung
+// cho cả căn phòng (và tối đi khi tàu vào bóng Trái Đất), nên hành tinh nằm gần phía Mặt Trời trên bầu trời
+// sẽ bị quay mặt tối về phía mình, trông đen sì như lỗ đen. Ngoài đời các hành tinh luôn được Mặt Trời chiếu,
+// và hướng nắng tới mỗi hành tinh được tính trong update() bên dưới.
+const planetVertex = /* glsl */ `
+  varying vec2 vUv;
+  varying vec3 vNormal;
+  void main() {
+    vUv = uv;
+    vNormal = normalize(mat3(modelMatrix) * normal);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+const planetFragment = /* glsl */ `
+  uniform sampler2D map;
+  uniform vec3 toSun;
+  uniform float opacity;
+  varying vec2 vUv;
+  varying vec3 vNormal;
+  void main() {
+    vec4 color = texture2D(map, vUv);
+    float lit = smoothstep(-0.06, 0.22, dot(normalize(vNormal), toSun)); // ranh giới ngày đêm hơi mềm
+    gl_FragColor = vec4(color.rgb * (0.05 + 0.95 * lit), color.a * opacity);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
+  }
+`;
+function planetMaterial(map) {
+  return new THREE.ShaderMaterial({
+    uniforms: { map: { value: map }, toSun: { value: new THREE.Vector3(0, 1, 0) }, opacity: { value: 1 } },
+    vertexShader: planetVertex,
+    fragmentShader: planetFragment,
+    transparent: true,
+  });
+}
+
+// Vành đai Sao Thổ: các vòng đồng tâm sáng tối khác nhau, có khe Cassini tối ở giữa.
+// RingGeometry trải UV như nhìn từ trên xuống, nên vẽ vòng tròn đồng tâm trên một tấm vuông là khớp.
+function drawSaturnRing(ctx, w) {
+  const c = w / 2;
+  const bands = [ // [từ, tới] theo tỉ lệ bán kính ngoài, độ đậm
+    [0.59, 0.66, 0.25], [0.66, 0.78, 0.75], [0.78, 0.86, 0.95], [0.86, 0.885, 0.08], [0.885, 0.97, 0.7], [0.97, 1, 0.45],
+  ];
+  for (const [from, to, alpha] of bands) {
+    ctx.beginPath();
+    ctx.arc(c, c, c * to, 0, Math.PI * 2);
+    ctx.arc(c, c, c * from, 0, Math.PI * 2, true);
+    ctx.fillStyle = `rgba(232, 214, 168, ${alpha})`;
+    ctx.fill();
+  }
+}
 const PLANET_DISTANCE = 160;
 
 function buildPlanets(group, sunDir) {
@@ -627,19 +680,33 @@ function buildPlanets(group, sunDir) {
     ctx.fillRect(0, 0, 64, 64);
   });
 
+  // Trục quay của sao Thổ (cũng là pháp tuyến mặt phẳng vành đai) nghiêng 26,7° so với pháp tuyến hoàng đạo
+  // và giữ nguyên hướng trong không gian. Vì vậy nhìn từ Trái Đất, vành đai chỉ hé mở tối đa chừng 27°,
+  // có lúc nằm gần như ngang tầm mắt chứ không bao giờ ngửa thẳng về phía mình.
+  const ecliptic = new THREE.Vector3().crossVectors(S, P).normalize();
+  // Nghiêng về phía hướng P, để lúc mở trang (sao Thổ nằm gần hướng P) vành đai hé rộng nhất
+  const saturnAxis = ecliptic.clone().applyAxisAngle(S, THREE.MathUtils.degToRad(26.7));
+  const up = new THREE.Vector3(0, 1, 0);
+
   const list = PLANETS.map((p, i) => {
     const planet = new THREE.Group();
     group.add(planet);
-    // Mặt hành tinh được nắng chiếu từ phía Mặt Trời, nên sao Kim ở gần Mặt Trời trông như trăng khuyết
-    const material = new THREE.MeshStandardMaterial({ map: canvasTexture(256, 128, p.draw), roughness: 1, transparent: true });
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(p.size, 24, 16), material);
-    mesh.rotation.z = 0.2;
-    planet.add(mesh);
-    const materials = [material];
+    const pivot = new THREE.Group(); // nghiêng trục quay của hành tinh
+    planet.add(pivot);
+    if (p.ring) pivot.quaternion.setFromUnitVectors(up, saturnAxis);
+    // Mặt hành tinh được nắng chiếu từ phía Mặt Trời, nên sao Kim lúc ở gần Mặt Trời trông như trăng khuyết,
+    // còn các hành tinh ở xa như sao Mộc, sao Thổ thì gần như lúc nào cũng tròn đầy
+    const material = planetMaterial(canvasTexture(256, 128, p.draw));
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(p.size, 32, 20), material);
+    if (!p.ring) mesh.rotation.z = 0.2;
+    pivot.add(mesh);
+    let ringMat = null;
     if (p.ring) {
-      const ringMat = new THREE.MeshStandardMaterial({ color: '#e3cf9b', side: THREE.DoubleSide, roughness: 1, transparent: true });
-      planet.add(at(new THREE.Mesh(new THREE.RingGeometry(p.size * 1.35, p.size * 2.3, 48), ringMat), 0, 0, 0, -1.15, 0, 0.3));
-      materials.push(ringMat);
+      ringMat = new THREE.MeshBasicMaterial({
+        map: canvasTexture(256, 256, drawSaturnRing), color: '#d8c79c', side: THREE.DoubleSide, transparent: true, depthWrite: false,
+      });
+      // RingGeometry nằm trong mặt phẳng xy; xoay nằm xuống cho vuông góc với trục quay (trục y của pivot)
+      pivot.add(at(new THREE.Mesh(new THREE.RingGeometry(p.size * 1.35, p.size * 2.3, 64), ringMat), 0, 0, 0, -Math.PI / 2, 0, 0));
     }
     // Quầng sáng mờ quanh hành tinh: nhìn từ xa trông như một ngôi sao sáng
     const glowMat = new THREE.SpriteMaterial({
@@ -648,20 +715,35 @@ function buildPlanets(group, sunDir) {
     const glow = new THREE.Sprite(glowMat);
     glow.scale.setScalar(p.size * 7);
     planet.add(glow);
-    planet.children.forEach((c) => { c.renderOrder = -2; });
-    return { ...p, group: planet, mesh, materials, glowMat, phase: i * 1.9 };
+    planet.traverse((c) => { c.renderOrder = -2; });
+    return { ...p, group: planet, mesh, material, ringMat, glowMat, phase: i * 1.9 };
   });
 
   const deg = THREE.MathUtils.degToRad;
+  const dir = new THREE.Vector3();
   return {
     list,
     update(s, t) {
       for (const p of list) {
-        const angle = p.swing ? p.swing * Math.sin(t * p.speed + p.phase) : p.at + p.speed * t;
+        const swingAt = t * p.speed + p.phase;
+        const angle = p.swing ? p.swing * Math.sin(swingAt) : p.at + p.speed * t;
         p.group.position.copy(S).multiplyScalar(Math.cos(deg(angle)))
           .addScaledVector(P, Math.sin(deg(angle))).multiplyScalar(PLANET_DISTANCE);
         p.mesh.rotation.y = t * 0.3; // tự quay
-        p.materials.forEach((m) => { m.opacity = s; });
+
+        // Hướng nắng tới hành tinh: đặt Mặt Trời cách mình 1 đơn vị thiên văn theo hướng S, hành tinh nằm
+        // trên tia nhìn dir, cách Mặt Trời đúng p.au. Giải ra khoảng cách r từ mình tới hành tinh:
+        //   r² − 2r(dir·S) + 1 − au² = 0
+        // Hành tinh ở xa (sao Hoả trở ra) chỉ có một nghiệm dương. Sao Thuỷ, sao Kim có hai nghiệm: nằm phía bên kia
+        // Mặt Trời (tròn gần đầy, nhỏ) hoặc phía bên này (khuyết thành lưỡi liềm); chọn theo chiều đang đung đưa.
+        dir.copy(p.group.position).normalize();
+        const c = dir.dot(S);
+        const root = Math.sqrt(Math.max(0, c * c - 1 + p.au * p.au));
+        const r = p.swing && Math.cos(swingAt) < 0 ? c - root : c + root;
+        p.material.uniforms.toSun.value.copy(S).addScaledVector(dir, -r).normalize();
+
+        p.material.uniforms.opacity.value = s;
+        if (p.ringMat) p.ringMat.opacity = s * 0.95;
         p.glowMat.opacity = s * 0.5;
       }
     },
