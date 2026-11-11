@@ -121,6 +121,7 @@ let night = nightTarget ? 1 : 0;
 
 function setNight(value) {
   nightTarget = value;
+  world.nightOn = value; // để đồ vật biết đang chọn ngày hay đêm (ví dụ đoạn code trên màn hình máy tính)
   document.body.classList.toggle('is-night', value);
   ui.nightBtn.setAttribute('aria-pressed', String(value));
   ui.nightBtn.querySelector('span').textContent = value ? 'Ban ngày' : 'Buổi tối';

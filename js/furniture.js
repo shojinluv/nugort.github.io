@@ -49,9 +49,20 @@ function buildComputer(world) {
   g.add(at(box(1.6, 1.0, 0.08, '#2b2d38', 0.03), 0, 0.85, 0));      // viền màn hình
 
   // Màn hình: MeshBasicMaterial không bị ánh sáng ảnh hưởng nên trông như đang tự phát sáng
-  const screenMat = new THREE.MeshBasicMaterial({ map: canvasTexture(640, 380, drawCode), toneMapped: false });
+  // Đoạn code trên màn hình đổi theo chế độ đang chọn (ngày/đêm, Trái Đất/vũ trụ):
+  // mỗi khi chế độ đổi thì vẽ lại tấm canvas rồi báo cho texture cập nhật
+  const screenTex = canvasTexture(640, 380, (ctx, w, h) => drawCode(ctx, w, h, false, false));
+  const screenMat = new THREE.MeshBasicMaterial({ map: screenTex, toneMapped: false });
   const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.48, 0.88), screenMat);
   g.add(at(screen, 0, 0.85, 0.042));
+  let shown = 'false,false';
+  world.updaters.push(() => {
+    const mode = `${Boolean(world.nightOn)},${world.spaceOn}`;
+    if (mode === shown) return;
+    shown = mode;
+    drawCode(screenTex.image.getContext('2d'), 640, 380, Boolean(world.nightOn), world.spaceOn);
+    screenTex.needsUpdate = true;
+  });
 
   // Bàn phím và chuột
   const keyboard = at(new THREE.Group(), 0.05, 0, 0.62);
@@ -76,7 +87,7 @@ function buildComputer(world) {
   clickable(world, 'computer', g);
 }
 
-function drawCode(ctx, w, h) {
+function drawCode(ctx, w, h, night, space) {
   ctx.fillStyle = '#1f2336';
   ctx.fillRect(0, 0, w, h);
   ctx.fillStyle = '#2a2f47';
@@ -95,21 +106,22 @@ function drawCode(ctx, w, h) {
     [['const ', P], ['phong', T], [' = ', T], ['new ', P], ['Phong', Y], ['(', T], ["'ấm cúng'", S], [');', T]],
     [['phong', T], ['.', T], ['them', F], ['([', T], ["'đàn'", S], [', ', T], ["'mèo'", S], [', ', T], ["'cây'", S], [']);', T]],
     [],
-    [['function ', P], ['batDen', F], ['() {', T]],
-    [['  phong', T], ['.', T], ['sang', F], [' = ', T], ['true', Y], [';', T]],
-    [['}', T]],
+    [['phong', T], ['.', T], ['anhSang', F], [' = ', T], [night ? "'buổi tối'" : "'ban ngày'", S], [';', T]],
+    [['phong', T], ['.', T], ['viTri', F], [' = ', T], [space ? "'vũ trụ'" : "'Trái Đất'", S], [';', T]],
+    [['phong', T], ['.', T], ['trongLuc', F], [' = ', T], [space ? 'false' : 'true', Y], [';', T]],
     [],
-    [['batDen', F], ['();', T], [' // ✨', C]],
+    [['phong', T], ['.', T], ['chay', F], ['();', T], [` // ${space ? '🚀' : night ? '🌙' : '☀️'}`, C]],
   ];
   ctx.font = '22px "SFMono-Regular", Menlo, Consolas, monospace';
   ctx.textBaseline = 'middle';
+  let x = 58;
   lines.forEach((tokens, i) => {
     const y = 64 + i * 34;
     ctx.fillStyle = '#4b5170';
     ctx.textAlign = 'right';
     ctx.fillText(String(i + 1), 40, y);
     ctx.textAlign = 'left';
-    let x = 58;
+    x = 58;
     for (const [text, color] of tokens) {
       ctx.fillStyle = color;
       ctx.fillText(text, x, y);
@@ -117,7 +129,7 @@ function drawCode(ctx, w, h) {
     }
   });
   ctx.fillStyle = '#ffcb6b';
-  ctx.fillRect(58 + ctx.measureText('batDen(); // ✨').width + 6, 64 + 8 * 34 - 13, 12, 26); // con trỏ
+  ctx.fillRect(x + 6, 64 + (lines.length - 1) * 34 - 13, 12, 26); // con trỏ, nằm sau dòng cuối
 }
 
 // ---------- Đèn bàn (bấm vào → đổi ngày/đêm) ----------
@@ -289,7 +301,11 @@ function buildPlant(world) {
     inner.add(stick(new THREE.Vector3(0, 0.84, 0), tip, 0.022, '#3f8a52'));
     const leaf = sphere(0.42, leafMats[i % 2], 16, 10);
     leaf.scale.set(1, 0.09, 0.6); // ép dẹt hình cầu thành chiếc lá
-    inner.add(at(leaf, Math.cos(a) * (reach + 0.3), height + 0.02, Math.sin(a) * (reach + 0.3), 0, -a, -0.35));
+    // Lá nghiêng chúc xuống 0.35 rad. Đặt tâm lá sao cho đầu trong của lá trùm lên đầu cuống,
+    // kẻo lá lơ lửng tách rời khỏi cuống
+    const out = 0.36 * Math.cos(0.35); // từ đầu cuống ra tới tâm lá, theo chiều ngang
+    const drop = 0.36 * Math.sin(0.35); // và theo chiều dọc
+    inner.add(at(leaf, Math.cos(a) * (reach + out), height - 0.02 - drop, Math.sin(a) * (reach + out), 0, -a, -0.35));
   }
 
   // Ngoài vũ trụ, nước tưới không chảy xuống đất mà tụ thành những giọt tròn trôi lơ lửng
@@ -573,6 +589,7 @@ function buildCat(world) {
     // Chân trước buông thõng xuống dưới ngực và khẽ đung đưa như đang bơi trong không trung
     forelegs.forEach((leg, i) => {
       leg.rotation.z = -e * (1.2 + Math.sin(t * 1.3 + i * 1.5) * 0.12 * calm);
+      leg.scale.x = 1 - 0.4 * e; // co chân lại cho ngắn bớt (chân duỗi thẳng xuống trông dài quá)
     });
 
     jump = Math.max(0, jump - dt * 1.6);
@@ -720,13 +737,38 @@ function buildSpacesuit({ body, head, forelegs, tail }) {
     const sleeve = new THREE.Group();
     leg.add(sleeve);
     const z = FORELEGS[i];
-    const end = legEnd(z).sub(legStart(z)).multiplyScalar(0.84);
+    // Ống tay áo kéo dài hết cẳng chân, chui vào trong găng, để không hở chút da nào
+    const end = legEnd(z).sub(legStart(z));
     const dir = end.clone().normalize();
+    const cuff = end.clone().multiplyScalar(0.8);
     sleeve.add(
       stick(new THREE.Vector3(), end, 0.062, white),
-      stick(end.clone().addScaledVector(dir, -0.03), end.clone().addScaledVector(dir, 0.01), 0.07, coral),
+      stick(cuff.clone().addScaledVector(dir, -0.02), cuff.clone().addScaledVector(dir, 0.02), 0.07, coral),
     );
+    // Găng trắng bọc kín bàn chân (to hơn bàn chân một chút, đặt đúng chỗ bàn chân)
+    const shoulder = legStart(z);
+    const glove = sphere(0.073, white, 14, 10);
+    glove.scale.set(1.45, 0.75, 1.05);
+    sleeve.add(at(glove, 0.76 - shoulder.x, 0.04 - shoulder.y, z - shoulder.z));
     return sleeve;
+  });
+
+  // --- Hai chân sau: lúc nằm thì giấu dưới bụng nên không dựng, ra vũ trụ mới buông thõng xuống ---
+  // Vì chỉ hiện khi mặc đồ nên dựng luôn bằng ống quần trắng, cổ chân cam và giày trắng
+  const hindLegs = [-0.08, 0.22].map((z) => {
+    const leg = at(new THREE.Group(), -0.24, 0.1, z); // gốc ở hông, nằm lọt trong thân
+    const end = new THREE.Vector3(0.05, -0.3, 0);
+    const dir = end.clone().normalize();
+    const cuff = end.clone().multiplyScalar(0.8);
+    const boot = sphere(0.073, white, 14, 10);
+    boot.scale.set(1.45, 0.75, 1.05);
+    leg.add(
+      stick(new THREE.Vector3(), end, 0.066, white),
+      stick(cuff.clone().addScaledVector(dir, -0.02), cuff.clone().addScaledVector(dir, 0.02), 0.074, coral),
+      at(boot, end.x + 0.04, end.y - 0.02, 0),
+    );
+    forelegs[0].parent.add(leg); // gắn vào nhóm con mèo
+    return leg;
   });
 
   // --- Ống áo bọc đuôi, chóp đuôi có cục bông màu cam ---
@@ -735,7 +777,7 @@ function buildSpacesuit({ body, head, forelegs, tail }) {
   tailSleeve.add(new THREE.Mesh(tail.geometry, white), at(sphere(0.035, coral, 12, 8), tail.tip.x, tail.tip.y, tail.tip.z));
 
   // Bấm vào bộ đồ thì tia chuột xuyên qua, trúng con mèo bên trong
-  for (const part of [helmet, suit, tailSleeve, ...sleeves]) {
+  for (const part of [helmet, suit, tailSleeve, ...sleeves, ...hindLegs]) {
     part.traverse((o) => { o.userData.noPick = true; });
     part.visible = false;
   }
@@ -747,6 +789,10 @@ function buildSpacesuit({ body, head, forelegs, tail }) {
     helmet.visible = suit.visible = k > 0.01;
     tailSleeve.visible = k > 0.6;
     sleeves.forEach((s) => { s.visible = k > 0.6; });
+    hindLegs.forEach((leg, i) => {
+      leg.visible = k > 0.6;
+      leg.rotation.z = Math.sin(t * 1.3 + 2 + i * 1.5) * 0.14; // khẽ đung đưa
+    });
     helmet.scale.setScalar(Math.max(0.01, k)); // mũ to dần ra từ giữa đầu
     suit.scale.setScalar(0.9 + 0.1 * k);       // áo từ trong da "phồng" ra
     beaconMat.emissiveIntensity = Math.sin(t * 4) > 0.3 ? 2.2 : 0.3; // đèn ăng-ten nhấp nháy
