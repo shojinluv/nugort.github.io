@@ -647,12 +647,9 @@ function buildAirlock(room, world) {
   const out = at(new THREE.Group(), -5.3, 0, 0, 0, -Math.PI / 2, 0);
   room.add(out);
 
-  const door = at(new THREE.Group(), 2.3, 0, 0);
-  out.add(door);
-  door.add(at(box(2.4, 3.6, 0.14, metal, 0.05), 0, 1.9, 0.07));        // khung cửa
-  door.add(at(box(1.9, 3.1, 0.1, '#eef1f7', 0.08), 0, 1.85, 0.15));    // cánh cửa
-  door.add(at(box(1.9, 0.08, 0.02, dark, 0), 0, 1.25, 0.203));         // gân ngang trên cánh cửa
-  // Vạch cảnh báo vàng đen ở ngưỡng cửa
+  // Cửa đặt ở cuối tường, phía trước chân giường: đó là khoảng tường duy nhất còn trống ở mặt trong,
+  // nên cửa mở được cả hai phía mà không vướng giường, kệ sách hay chậu cây.
+  const DOOR_Z = 4.13;
   const stripes = canvasTexture(256, 32, (ctx, w, h) => {
     ctx.fillStyle = '#f4c542';
     ctx.fillRect(0, 0, w, h);
@@ -666,29 +663,52 @@ function buildAirlock(room, world) {
       ctx.fill();
     }
   });
-  door.add(at(new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.3), new THREE.MeshStandardMaterial({ map: stripes, roughness: 0.6 })), 0, 0.33, 0.143));
-
-  // Ô kính tròn: hắt ra chút ánh đèn ấm từ trong phòng
-  const glass = new THREE.MeshStandardMaterial({ color: '#2a3a5c', emissive: '#ffd9a0', emissiveIntensity: 0.5, roughness: 0.2 });
-  door.add(at(new THREE.Mesh(new THREE.CircleGeometry(0.42, 32), glass), 0, 2.55, 0.203));
-  door.add(at(new THREE.Mesh(new THREE.TorusGeometry(0.44, 0.06, 12, 40), coral), 0, 2.55, 0.205));
-
-  // Tay quay khoá cửa
-  const wheel = at(new THREE.Group(), 0, 1.25, 0.3);
-  wheel.add(new THREE.Mesh(new THREE.TorusGeometry(0.27, 0.035, 10, 32), dark));
-  for (let i = 0; i < 3; i++) wheel.add(at(box(0.54, 0.05, 0.04, dark, 0.01), 0, 0, 0, 0, 0, (i * Math.PI) / 3));
-  door.add(wheel);
-  door.add(at(cylinder(0.06, 0.06, 0.12, dark, 12), 0, 1.25, 0.24, Math.PI / 2)); // trục tay quay
-
-  // Đèn báo trên cửa, bảng phím và tay vịn bên cạnh
+  const stripeMat = new THREE.MeshStandardMaterial({ map: stripes, roughness: 0.6 });
   const lampMat = new THREE.MeshStandardMaterial({ color: '#2a2f38', emissive: '#ff4d4d', emissiveIntensity: 0 });
-  door.add(at(box(0.5, 0.16, 0.08, lampMat, 0.03), 0, 3.86, 0.1));
-  door.add(at(box(0.3, 0.44, 0.07, dark, 0.02), -1.5, 1.6, 0.035));
   const keyMat = new THREE.MeshStandardMaterial({ color: '#1c2a22', emissive: '#3dff9a', emissiveIntensity: 0 });
-  door.add(at(box(0.2, 0.1, 0.02, keyMat, 0), -1.5, 1.72, 0.075));
-  door.add(at(cylinder(0.035, 0.035, 1.5, metal, 10), 1.45, 1.75, 0.16));
-  door.add(at(box(0.07, 0.07, 0.16, metal, 0.01), 1.45, 2.45, 0.08));
-  door.add(at(box(0.07, 0.07, 0.16, metal, 0.01), 1.45, 1.05, 0.08));
+  // Ô kính tròn: nhìn từ ngoài thấy ánh đèn ấm trong phòng, nhìn từ trong thấy trời đêm xanh thẫm
+  const glassOut = new THREE.MeshStandardMaterial({ color: '#2a3a5c', emissive: '#ffd9a0', emissiveIntensity: 0.5, roughness: 0.2 });
+  const glassIn = new THREE.MeshStandardMaterial({ color: '#0d1430', emissive: '#3b5bd6', emissiveIntensity: 0.35, roughness: 0.15 });
+  const wheels = [];
+
+  // Một mặt cửa: khung, cánh, ô kính, tay quay và đèn báo. Mặt ngoài còn rộng chỗ nên có thêm
+  // bảng phím và tay vịn; mặt trong thì cửa đã vừa khít giữa chân giường và đầu tường.
+  const makeDoorFace = (glass, outside) => {
+    const door = new THREE.Group();
+    door.add(at(box(1.7, 3.6, 0.14, metal, 0.05), 0, 1.9, 0.07));        // khung cửa
+    door.add(at(box(1.3, 3.1, 0.1, '#eef1f7', 0.08), 0, 1.85, 0.15));    // cánh cửa
+    door.add(at(box(1.3, 0.08, 0.02, dark, 0), 0, 1.25, 0.203));         // gân ngang trên cánh cửa
+    door.add(at(new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.3), stripeMat), 0, 0.33, 0.143)); // vạch cảnh báo ở ngưỡng cửa
+    door.add(at(new THREE.Mesh(new THREE.CircleGeometry(0.36, 32), glass), 0, 2.55, 0.203));
+    door.add(at(new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.055, 12, 40), coral), 0, 2.55, 0.205));
+
+    const wheel = at(new THREE.Group(), 0, 1.25, 0.3); // tay quay khoá cửa
+    wheel.add(new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.035, 10, 32), dark));
+    for (let i = 0; i < 3; i++) wheel.add(at(box(0.5, 0.05, 0.04, dark, 0.01), 0, 0, 0, 0, 0, (i * Math.PI) / 3));
+    door.add(wheel);
+    wheels.push(wheel);
+    door.add(at(cylinder(0.06, 0.06, 0.12, dark, 12), 0, 1.25, 0.24, Math.PI / 2)); // trục tay quay
+
+    door.add(at(box(0.5, 0.16, 0.08, lampMat, 0.03), 0, 3.86, 0.1));        // đèn báo
+    if (outside) {
+      door.add(at(box(0.3, 0.44, 0.07, dark, 0.02), -1.65, 1.6, 0.035));    // bảng phím
+      door.add(at(box(0.2, 0.1, 0.02, keyMat, 0), -1.65, 1.72, 0.075));
+      door.add(at(cylinder(0.035, 0.035, 1.5, metal, 10), -1.1, 1.75, 0.16)); // tay vịn
+      door.add(at(box(0.07, 0.07, 0.16, metal, 0.01), -1.1, 2.45, 0.08));
+      door.add(at(box(0.07, 0.07, 0.16, metal, 0.01), -1.1, 1.05, 0.08));
+    }
+    return door;
+  };
+
+  const door = at(makeDoorFace(glassOut, true), DOOR_Z, 0, 0); // mặt ngoài
+  out.add(door);
+
+  // Mặt trong: nhóm quay ngược lại, trục z chĩa vào phòng
+  const inner = at(new THREE.Group(), -5, 0, DOOR_Z, 0, Math.PI / 2, 0);
+  const doorIn = makeDoorFace(glassIn, false);
+  inner.add(doorIn);
+  inner.traverse((o) => { o.userData.noPick = true; });
+  room.add(inner);
 
   // Tên tàu sơn thẳng lên tường, kèm dấu chân mèo
   const name = canvasTexture(1024, 256, (ctx, w, h) => {
@@ -716,22 +736,22 @@ function buildAirlock(room, world) {
     ctx.fillText('TÀU VŨ TRỤ · CĂN PHÒNG NHỎ', 176, 196);
   });
   const nameMat = new THREE.MeshStandardMaterial({ map: name, transparent: true, roughness: 0.8 });
-  out.add(decoration(at(new THREE.Mesh(new THREE.PlaneGeometry(5.2, 1.3), nameMat), -1.75, 3.9, 0.006)));
+  out.add(decoration(at(new THREE.Mesh(new THREE.PlaneGeometry(5.2, 1.3), nameMat), -1.2, 3.9, 0.006)));
 
   out.traverse((o) => { o.userData.noPick = true; });
 
   world.updaters.push((t) => {
     const s = world.space;
-    out.visible = s > 0.02;
+    out.visible = inner.visible = s > 0.02;
     if (!out.visible) return;
-    door.scale.z = Math.max(s, 0.001); // cửa trồi dần ra khỏi mặt tường
+    door.scale.z = doorIn.scale.z = Math.max(s, 0.001); // cửa trồi dần ra khỏi mặt tường, cả hai phía
     nameMat.opacity = s;
-    wheel.rotation.z = -s * Math.PI * 2;
+    wheels.forEach((w) => { w.rotation.z = -s * Math.PI * 2; });
     const sealed = s > 0.995;
     lampMat.emissive.set(sealed ? '#3dff9a' : '#ff4d4d');
     lampMat.emissiveIntensity = sealed ? 1.4 : (Math.sin(t * 9) > 0 ? 1.8 : 0.15);
     keyMat.emissiveIntensity = 1.2 * s;
-    glass.emissiveIntensity = 0.45 + 0.5 * world.night;
+    glassOut.emissiveIntensity = 0.45 + 0.5 * world.night;
   });
 }
 
