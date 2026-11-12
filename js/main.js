@@ -102,8 +102,9 @@ const SPACE_NIGHT = { sky: C('#5c62b0'), ground: C('#15132b'), hemi: 0.4, sun: C
 //  - clickables: các đồ vật bấm được
 //  - floaters: các vật sẽ trôi lơ lửng khi ra ngoài vũ trụ (xem space.js)
 //  - space, spaceProgress, spaceOn: trạng thái bay ra vũ trụ (xem phần 7b)
+//  - sunDir: hướng Mặt Trời cố định ngoài vũ trụ; sunNow: hướng tia nắng (hay ánh trăng) đang chiếu lúc này (xem phần 7c)
 const world = {
-  scene, camera, sunDir: SUN_DIR, updaters: [], nightFns: [], clickables: {}, floaters: [],
+  scene, camera, sunDir: SUN_DIR, sunNow: SUN_DIR.clone(), golden: 0, updaters: [], nightFns: [], clickables: {}, floaters: [],
   night: 0, space: 0, spaceProgress: 0, spaceOn: false, reduceMotion,
 };
 buildRoom(world);
@@ -121,11 +122,21 @@ scene.traverse((obj) => {
 });
 
 // ===== 7. Ngày ↔ đêm =====
-const hour = new Date().getHours();
-let nightTarget = hour >= 18 || hour < 6; // mở trang buổi tối thì phòng cũng tối
+// Trời sáng tối theo giờ trên máy người xem (6 giờ sáng tới 6 giờ tối là ban ngày), để trang mở lâu thì tự chuyển.
+// Người xem bấm nút "Buổi tối / Ban ngày" (hay bật tắt đèn bàn) thì thôi không tự chuyển nữa.
+let clockOverride = null; // thử một giờ khác trong Console: room.setTime(17.5)
+const hoursNow = () => {
+  if (clockOverride !== null) return clockOverride;
+  const d = new Date();
+  return d.getHours() + d.getMinutes() / 60;
+};
+const isNightHour = (h) => h >= 18 || h < 6;
+let nightTarget = isNightHour(hoursNow()); // mở trang buổi tối thì phòng cũng tối
 let night = nightTarget ? 1 : 0;
+let manualNight = false;
 
-function setNight(value) {
+function setNight(value, manual = false) {
+  if (manual) manualNight = true;
   nightTarget = value;
   world.nightOn = value; // để đồ vật biết đang chọn ngày hay đêm (ví dụ đoạn code trên màn hình máy tính)
   document.body.classList.toggle('is-night', value);
@@ -152,11 +163,71 @@ function applyNight(n) {
   sun.intensity = value('sunI');
   color(fill.color, 'fill');
   fill.intensity = value('fillI');
+  updateSun(n);
+  // Sáng sớm và chiều tà: nắng vàng cam, trời ửng hồng cam
+  const g = world.golden;
+  if (g > 0.001) {
+    sun.color.lerp(GOLD_SUN, g * 0.75);
+    hemi.color.lerp(GOLD_SKY, g * 0.35);
+    sun.intensity *= 1 - 0.2 * g;
+  }
+  tintSky(g);
   world.night = n;
   world.nightFns.forEach((fn) => fn(n));
 }
 setNight(nightTarget);
-ui.nightBtn.addEventListener('click', () => setNight(!nightTarget));
+ui.nightBtn.addEventListener('click', () => setNight(!nightTarget, true));
+
+// ===== 7c. Mặt Trời đi theo giờ thật =====
+// Ở Trái Đất, Mặt Trời đi một vòng cung phía sau căn phòng theo giờ trên máy người xem: sáng sớm thấp bên trái,
+// trưa lên cao nhất ngay sau cửa sổ, chiều tà xuống thấp bên phải. Lúc nào cũng ở sau bức tường có cửa sổ,
+// nên nắng luôn rọi được vào phòng; vệt nắng trên sàn, bóng đổ, cầu vồng và biển mây cũng dịch theo.
+// Ban đêm trăng đi một vòng cung y như vậy. Ra vũ trụ thì về đúng hướng Mặt Trời cố định ngoài đó (SUN_DIR).
+const GOLD_SUN = new THREE.Color('#ffb46e');
+const GOLD_SKY = new THREE.Color('#ffd2b0');
+const deg = THREE.MathUtils.degToRad;
+// f: 0 lúc mọc (6 giờ), 1 lúc lặn (18 giờ) → hướng tia sáng đi tới
+const arcDir = (f, out) => {
+  const el = deg(22 + 40 * Math.sin(Math.PI * f));   // độ cao: 22° lúc mọc và lặn, 62° lúc trưa
+  const az = deg(THREE.MathUtils.lerp(-60, 60, f));  // từ phía sau bên trái sang phía sau bên phải
+  return out.set(-Math.cos(el) * Math.sin(az), -Math.sin(el), Math.cos(el) * Math.cos(az));
+};
+const dayDir = new THREE.Vector3();
+const nightDir = new THREE.Vector3();
+function updateSun(n) {
+  const h = hoursNow();
+  const nightHour = isNightHour(h);
+  // Đêm mà người xem bật "Ban ngày" thì cho nắng buổi sáng; ngày mà bật "Buổi tối" thì trăng ở chỗ Mặt Trời
+  arcDir(nightHour ? 0.3 : (h - 6) / 12, dayDir);
+  if (nightHour) arcDir(((h - 18 + 24) % 24) / 12, nightDir);
+  else nightDir.copy(dayDir);
+  world.sunNow.copy(dayDir).lerp(nightDir, n).normalize().lerp(SUN_DIR, world.space).normalize();
+  sun.position.copy(world.sunNow).multiplyScalar(-25);
+  const elevation = Math.asin(-dayDir.y);
+  world.golden = (1 - THREE.MathUtils.smoothstep(elevation, deg(22), deg(40))) * (1 - n) * (1 - world.space);
+}
+
+// Màu nền trời ban ngày ngả hồng cam lúc sáng sớm, chiều tà (đổi biến màu CSS, chỉ khi đổi đủ nhiều)
+const SKY_1 = [new THREE.Color('#fff4ea'), new THREE.Color('#ffe4cc')];
+const SKY_2 = [new THREE.Color('#f7d3c1'), new THREE.Color('#f3a989')];
+const skyTmp = new THREE.Color();
+let skyTint = -1;
+function tintSky(g) {
+  if (Math.abs(g - skyTint) < 0.01) return;
+  skyTint = g;
+  const root = document.documentElement.style;
+  root.setProperty('--day-1', skyTmp.lerpColors(SKY_1[0], SKY_1[1], g).getStyle());
+  root.setProperty('--day-2', skyTmp.lerpColors(SKY_2[0], SKY_2[1], g).getStyle());
+}
+
+// Trang mở lâu: tới 6 giờ sáng hay 6 giờ tối thì tự chuyển ngày đêm (trừ khi người xem đã tự bấm chọn)
+setInterval(() => {
+  const want = isNightHour(hoursNow());
+  if (!manualNight && want !== nightTarget) setNight(want);
+}, 1000);
+function setTime(h) {
+  clockOverride = h;
+}
 
 // ===== 7b. Bay ra vũ trụ =====
 // spaceTarget là điều người dùng muốn (đang ở ngoài vũ trụ hay không).
@@ -445,7 +516,7 @@ function activate(id, obj) {
   discover(id);
   switch (id) {
     case 'lamp':
-      setNight(!nightTarget);
+      setNight(!nightTarget, true);
       popText(obj, nightTarget ? 'Tách! Chúc ngủ ngon 🌙' : 'Tách! Chào buổi sáng ☀️');
       break;
     case 'cat':
@@ -618,5 +689,6 @@ renderer.setAnimationLoop((now) => {
 // Mở Console của trình duyệt (F12) và gõ "room" để nghịch thử, ví dụ:
 //   room.setNight(true)
 //   room.setSpace(true)
+//   room.setTime(17.5)   (xem trời lúc 5 rưỡi chiều; room.setTime(null) để về giờ thật)
 //   room.world.clickables.cat.position.x = 3
-window.room = { THREE, scene, camera, renderer, controls, world, setNight, setSpace, pickAt };
+window.room = { THREE, scene, camera, renderer, controls, world, setNight, setSpace, setTime, pickAt };

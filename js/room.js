@@ -293,23 +293,33 @@ function buildWindow(room, world) {
 
 // ---------- Tia nắng xuyên qua cửa sổ + bụi lấp lánh ----------
 function buildSunbeam(room, world) {
-  // 4 góc cửa sổ, và 4 điểm tương ứng nơi tia nắng chạm sàn
+  // 4 góc cửa sổ, và 4 điểm tương ứng nơi tia nắng chạm sàn. Mặt Trời đi theo giờ thật (xem main.js),
+  // nên mỗi khung hình tính lại chỗ chạm sàn theo hướng nắng lúc đó (world.sunNow)
   const corners = [[WIN.x1, WIN.y1], [WIN.x2, WIN.y1], [WIN.x2, WIN.y2], [WIN.x1, WIN.y2]]
     .map(([x, y]) => new THREE.Vector3(x, y, -5));
-  const onFloor = corners.map((c) => c.clone().addScaledVector(SUN_DIR, c.y / -SUN_DIR.y));
 
   // Tự tạo hình khối từ 8 đỉnh: đầu ở cửa sổ sáng rõ, đầu ở sàn mờ dần
-  const positions = [...corners, ...onFloor].flatMap((v) => [v.x, v.y, v.z]);
-  const colors = [...corners.map(() => [1, 1, 1, 0.32]), ...onFloor.map(() => [1, 1, 1, 0.02])].flat();
+  const positions = new Float32Array(8 * 3);
+  const colors = [...corners.map(() => [1, 1, 1, 0.32]), ...corners.map(() => [1, 1, 1, 0.02])].flat();
   const index = [];
   for (let i = 0; i < 4; i++) {
     const a = i, b = (i + 1) % 4, c = b + 4, d = a + 4;
     index.push(a, b, c, a, c, d);
   }
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 4));
   geometry.setIndex(index);
+  const floorHit = new THREE.Vector3();
+  const placeBeam = (dir) => {
+    corners.forEach((c, i) => {
+      c.toArray(positions, i * 3);
+      floorHit.copy(c).addScaledVector(dir, c.y / -dir.y).toArray(positions, (i + 4) * 3);
+    });
+    geometry.attributes.position.needsUpdate = true;
+    geometry.computeBoundingSphere();
+  };
+  placeBeam(world.sunNow);
 
   const beamMat = new THREE.MeshBasicMaterial({
     color: '#ffe2a6', vertexColors: true, transparent: true, depthWrite: false,
@@ -318,14 +328,14 @@ function buildSunbeam(room, world) {
   const beam = decoration(new THREE.Mesh(geometry, beamMat));
   room.add(beam);
 
-  // Bụi li ti bay lơ lửng trong vệt nắng
+  // Bụi li ti bay lơ lửng trong vệt nắng: mỗi hạt nhớ chỗ lọt qua cửa sổ và đã đi được bao xa theo tia nắng
   const N = 140;
   const seeds = [];
   for (let i = 0; i < N; i++) {
     const y = THREE.MathUtils.lerp(WIN.y1, WIN.y2, random());
-    const base = new THREE.Vector3(THREE.MathUtils.lerp(WIN.x1, WIN.x2, random()), y, -5)
-      .addScaledVector(SUN_DIR, random() * 0.85 * (y / -SUN_DIR.y));
-    seeds.push({ base, phase: random() * Math.PI * 2, speed: 0.2 + random() * 0.3 });
+    const x = THREE.MathUtils.lerp(WIN.x1, WIN.x2, random());
+    const depth = random() * 0.85; // phần quãng đường từ cửa sổ xuống sàn
+    seeds.push({ x, y, depth, base: new THREE.Vector3(), phase: random() * Math.PI * 2, speed: 0.2 + random() * 0.3 });
   }
   const dustGeo = new THREE.BufferGeometry();
   const pos = new Float32Array(N * 3);
@@ -344,7 +354,10 @@ function buildSunbeam(room, world) {
   room.add(decoration(new THREE.Points(dustGeo, dustMat)));
 
   world.updaters.push((t) => {
+    const dir = world.sunNow;
+    placeBeam(dir);
     seeds.forEach((s, i) => {
+      s.base.set(s.x, s.y, -5).addScaledVector(dir, s.depth * (s.y / -dir.y));
       pos[i * 3] = s.base.x + Math.sin(t * s.speed + s.phase) * 0.15;
       pos[i * 3 + 1] = s.base.y + Math.sin(t * s.speed * 0.7 + s.phase * 2) * 0.2;
       pos[i * 3 + 2] = s.base.z + Math.cos(t * s.speed + s.phase) * 0.15;

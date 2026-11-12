@@ -8,7 +8,6 @@
 import * as THREE from 'three';
 import { mat, cylinder, sphere, at, canvasTexture, decoration } from './helpers.js';
 import { PAD, GROUND_SCALE, LAUNCH_H0, launchPose, newLaunchPose } from './space.js';
-import { SUN_DIR } from './room.js';
 
 // Số ngẫu nhiên riêng của hòn đảo (có hạt giống, lần nào tải trang cũng giống nhau)
 let seed = 4242;
@@ -116,7 +115,7 @@ export function buildIsland(world) {
   buildTrees(island);
   buildFlowers(island);
   const glowShrooms = buildMushrooms(island);
-  const water = buildPond(island);
+  const water = buildPond(island, world);
   const lantern = buildPathAndLantern(island);
   const rocks = buildFloatingRocks(island);
   const clouds = buildClouds(island);
@@ -524,7 +523,7 @@ function buildMushrooms(island) {
 }
 
 // ---------- Ao nhỏ và thác nước đổ ra khỏi mép đảo ----------
-function buildPond(island) {
+function buildPond(island, world) {
   const streaks = (w, h, vertical) => {
     const tex = canvasTexture(w, h, (ctx) => {
       ctx.fillStyle = '#7fcbe8';
@@ -748,7 +747,8 @@ function buildPond(island) {
   // Từng điểm trên tấm hơi nước tự tính góc đó theo vị trí camera, nên cầu vồng chỉ hiện khi xoay sang phía
   // có mặt trời sau lưng (phía sau, bên trái hòn đảo) và cong đúng như cầu vồng thật. Tối hay ra vũ trụ thì không có.
   const bowMat = new THREE.ShaderMaterial({
-    uniforms: { antiSun: { value: SUN_DIR.clone().normalize() }, strength: { value: 0 } },
+    // Hướng tia nắng lấy thẳng từ world.sunNow (Mặt Trời đi theo giờ thật), nên cầu vồng cũng dịch theo nắng
+    uniforms: { antiSun: { value: world.sunNow }, strength: { value: 0 } },
     vertexShader: /* glsl */ `
       varying vec3 vWorld;
       varying vec2 vUv;

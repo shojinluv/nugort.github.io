@@ -22,9 +22,9 @@ export function buildRealm(world) {
   realm.name = 'chiều không gian khác';
   world.scene.add(realm);
 
-  const sea = buildCloudSea(realm, world.sunDir);
+  const sea = buildCloudSea(realm, world);
   const isles = buildFarIslands(realm);
-  const sky = buildSunMoonStars(realm, world.sunDir);
+  const sky = buildSunMoonStars(realm, world);
   const whale = buildWhale(realm);
   world.whale = whale.now; // gọi cá voi ra ngay, không phải đợi tới lượt (thử trong Console: room.world.whale())
   realm.traverse(decoration); // cảnh nền: không bấm được, không đổ bóng
@@ -264,14 +264,14 @@ function buildWhale(realm) {
 // ---------- Biển mây ----------
 // Một tấm phẳng rất rộng, mây vẽ bằng nhiễu (noise) ngay trong shader nên trôi được và không lộ ô lặp lại,
 // càng ra xa càng tan vào màu trời. Bên trên rải thêm những đám mây bông phồng lên cho có khối.
-function buildCloudSea(realm, sunDir) {
-  const toSun = sunDir.clone().negate();
+function buildCloudSea(realm, world) {
   const material = new THREE.ShaderMaterial({
     uniforms: {
       time: { value: 0 },
       night: { value: 0 },
       opacity: { value: 1 },
-      sunXZ: { value: new THREE.Vector2(toSun.x, toSun.z).normalize() }, // hướng về phía Mặt Trời, trên mặt phẳng ngang
+      golden: { value: 0 },             // sáng sớm, chiều tà: đỉnh mây ửng vàng cam
+      sunXZ: { value: new THREE.Vector2(0, -1) }, // hướng về phía Mặt Trời, trên mặt phẳng ngang (cập nhật mỗi khung hình)
     },
     vertexShader: /* glsl */ `
       varying vec3 vWorld;
@@ -299,6 +299,7 @@ function buildCloudSea(realm, sunDir) {
         return v;
       }
       uniform vec2 sunXZ;
+      uniform float golden;
       void main() {
         vec2 q = vWorld.xz * 0.05 + vec2(time * 0.008, time * 0.004); // mây trôi rất chậm
         float c = fbm(q);
@@ -308,8 +309,8 @@ function buildCloudSea(realm, sunDir) {
         float lit = clamp((c - fbm(q + sunXZ * 0.12)) * 5.0 + 0.65, 0.0, 1.0);
         float d = length(vWorld.xz);
         float horizon = 1.0 - smoothstep(120.0, 250.0, d); // ra xa thì tan vào chân trời
-        vec3 top = mix(vec3(1.0, 1.0, 1.0), vec3(0.42, 0.45, 0.74), night);
-        vec3 shade = mix(vec3(0.95, 0.86, 0.89), vec3(0.1, 0.11, 0.26), night);
+        vec3 top = mix(mix(vec3(1.0, 1.0, 1.0), vec3(1.0, 0.86, 0.7), golden), vec3(0.42, 0.45, 0.74), night);
+        vec3 shade = mix(mix(vec3(0.95, 0.86, 0.89), vec3(0.93, 0.7, 0.72), golden), vec3(0.1, 0.11, 0.26), night);
         vec3 col = mix(shade, top, mix(0.5, 1.0, puff) * lit);
         gl_FragColor = vec4(col, (0.72 + 0.28 * puff) * horizon * opacity);
       }`,
@@ -347,6 +348,8 @@ function buildCloudSea(realm, sunDir) {
       material.uniforms.time.value = t * calm;
       material.uniforms.night.value = n;
       material.uniforms.opacity.value = keep;
+      material.uniforms.golden.value = world.golden;
+      material.uniforms.sunXZ.value.set(-world.sunNow.x, -world.sunNow.z).normalize();
       puffMat.emissiveIntensity = 0.35 * (1 - n) + 0.03; // ban đêm mây tối theo trời
       puffMat.opacity = keep;
       clouds.position.x = Math.sin(t * 0.02) * 2 * calm; // cả đàn mây dạt qua dạt lại thật chậm
@@ -451,8 +454,7 @@ function buildFarIslands(realm) {
 // ---------- Mặt Trời, trăng và sao ----------
 // Mặt Trời và trăng đặt đúng hướng nguồn sáng đang rọi vào phòng (ngược với hướng tia nắng),
 // nên nhìn ngược lên phía sau căn phòng là thấy, và khớp với vệt nắng, bóng đổ, cầu vồng.
-function buildSunMoonStars(realm, sunDir) {
-  const toSun = sunDir.clone().negate().normalize();
+function buildSunMoonStars(realm, world) {
 
   const sunTex = canvasTexture(256, 256, (ctx, w, h) => {
     const g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
@@ -466,7 +468,7 @@ function buildSunMoonStars(realm, sunDir) {
   });
   const sunMat = new THREE.SpriteMaterial({ map: sunTex, transparent: true, depthWrite: false, toneMapped: false });
   const sun = new THREE.Sprite(sunMat);
-  sun.position.copy(toSun).multiplyScalar(140);
+  sun.position.copy(world.sunNow).multiplyScalar(-140); // ngược hướng tia nắng (cập nhật mỗi khung hình)
   sun.scale.setScalar(40);
   realm.add(sun);
 
@@ -514,6 +516,10 @@ function buildSunMoonStars(realm, sunDir) {
 
   return {
     update(t, n, keep) {
+      // Mặt Trời ban ngày và trăng ban đêm đều nằm đúng hướng ánh sáng đang rọi vào phòng
+      sun.position.copy(world.sunNow).multiplyScalar(-140);
+      moon.position.copy(sun.position);
+      sun.material.color.setRGB(1, 1 - 0.18 * world.golden, 1 - 0.38 * world.golden); // lúc thấp thì ngả vàng cam
       sunMat.opacity = (1 - n) * keep;
       moonMat.opacity = n * keep;
       sun.visible = sunMat.opacity > 0.01;
