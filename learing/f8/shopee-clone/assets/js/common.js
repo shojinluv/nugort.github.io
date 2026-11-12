@@ -35,7 +35,7 @@ const HEADER = `
       <nav class="topbar" aria-label="Liên kết phụ">
         <ul>
           <li><a href="../../../index.html">← Về căn phòng nhỏ</a></li>
-          <li class="hide-sm">Giao hàng bằng tên lửa, chậm nhất 3 năm ánh sáng</li>
+          <li class="hide-sm">Giao hàng bằng tên lửa, xa 3 năm ánh sáng cũng giao</li>
         </ul>
         <ul>
           <li><button type="button" data-auth="register">Đăng ký</button></li>
@@ -140,7 +140,7 @@ const FOOTER = `
         <h3 class="footer__sub">Đơn vị vận chuyển</h3>
         <ul class="footer__chips">
           ${tipChip('🛵', 'Xe máy', 'Xe máy chỉ giao quanh hòn đảo, tức là trong vòng chục mét.')}
-          ${tipChip('🚀', 'Tên lửa SHOJINLUV-01', 'Chậm nhất 3 năm ánh sáng. Muốn nhanh hơn thì thêm phí cá khô.')}
+          ${tipChip('🚀', 'Tên lửa SHOJINLUV-01', 'Xa 3 năm ánh sáng vẫn giao, chỉ hơi lâu. Muốn nhanh hơn thì thêm phí cá khô.')}
           ${tipChip('🐋', 'Cá voi bay', 'Mẹ con cá voi bơi ngang biển mây chừng một hai phút một lần, ra mép đảo đứng đợi nhé.')}
           ${tipChip('🐬', 'Đàn cá heo', 'Giao siêu tốc, chỉ có điều hàng tới nơi hơi ướt mây.')}
           ${tipChip('🐈', 'Mèo ngậm tha tới', 'Mèo tha tận tay, nhưng hay đánh rơi giữa đường để đuổi bướm.')}
