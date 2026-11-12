@@ -1,7 +1,7 @@
 // common.js – Phần dùng chung cho mọi trang của Chợ Nugỏrt:
 // thanh đầu trang (tìm kiếm, giỏ hàng), chân trang, hộp đăng nhập/đăng ký và thông báo nhỏ.
 // Mỗi trang chỉ cần gọi mountShell() một lần, rồi dùng addToCart(), toast()… khi cần.
-import { byId, money, sold, tint, discount, esc, variantsOf } from './data.js';
+import { byId, money, sold, tint, discount, esc, variantsOf, stockOf } from './data.js';
 
 export const $ = (id) => document.getElementById(id);
 
@@ -261,29 +261,65 @@ export function renderCart() {
   badge.textContent = count > 99 ? '99+' : count;
   badge.hidden = count === 0;
 
-  $('cart-list').innerHTML = items.map(({ key, p, qty, variant }) => `
+  // Mỗi món: tên, phân loại và đơn giá; bên dưới là ô chỉnh số lượng (− số +), thành tiền và nút Xóa
+  $('cart-list').innerHTML = items.map(({ key, p, qty, variant }) => {
+    const max = stockOf(p);
+    const k = esc(key);
+    return `
     <li class="cart__item">
       <a class="cart__thumb" href="product.html?id=${p.id}" style="background:${tint(p.id)}" aria-hidden="true" tabindex="-1">${p.icon}</a>
-      <span>
+      <div class="cart__info">
         <a class="cart__name" href="product.html?id=${p.id}">${esc(p.name)}</a>
-        <span class="cart__meta">${variant ? `${esc(variant)} · ` : ''}<b>${money(p.price)}</b> × ${qty}</span>
-      </span>
-      <button class="cart__remove" type="button" data-remove="${esc(key)}" aria-label="Bỏ ${esc(p.name)} khỏi giỏ">Xóa</button>
-    </li>`).join('');
+        <span class="cart__meta">${variant ? `${esc(variant)} · ` : ''}<b>${money(p.price)}</b></span>
+        <div class="cart__controls">
+          <div class="qty qty--sm" role="group" aria-label="Số lượng ${esc(p.name)}">
+            <button type="button" data-cart-step="-1" data-key="${k}" aria-label="Bớt một" ${qty <= 1 ? 'disabled' : ''}>−</button>
+            <input type="number" inputmode="numeric" min="1" max="${max}" value="${qty}" data-cart-qty="${k}" aria-label="Số lượng">
+            <button type="button" data-cart-step="1" data-key="${k}" aria-label="Thêm một" ${qty >= max ? 'disabled' : ''}>+</button>
+          </div>
+          <b class="cart__line">${money(p.price * qty)}</b>
+          <button class="cart__remove" type="button" data-remove="${k}" aria-label="Bỏ ${esc(p.name)} khỏi giỏ">Xóa</button>
+        </div>
+      </div>
+    </li>`;
+  }).join('');
   $('cart-empty').hidden = count > 0;
   $('cart-foot').hidden = count === 0;
   $('cart-total').textContent = money(total);
 }
 
-export function addToCart(id, qty = 1, variant = '') {
-  const key = `${id}|${variant}`;
-  cart[key] = { id, variant, qty: (cart[key]?.qty || 0) + qty };
-  save(CART_KEY, cart);
-  renderCart();
+function bumpBadge() {
   const badge = $('cart-count');
   badge.classList.remove('is-bump');
   void badge.offsetWidth; // ép trình duyệt tính lại để hiệu ứng chạy lại từ đầu
   badge.classList.add('is-bump');
+}
+
+export function addToCart(id, qty = 1, variant = '') {
+  const key = `${id}|${variant}`;
+  const max = stockOf(byId.get(id));
+  cart[key] = { id, variant, qty: Math.min(max, (cart[key]?.qty || 0) + qty) }; // không thêm quá số hàng còn trong kho
+  save(CART_KEY, cart);
+  renderCart();
+  bumpBadge();
+}
+
+// Chỉnh số lượng một món ngay trong giỏ: từ 1 tới số hàng còn trong kho (muốn bỏ hẳn thì bấm Xóa)
+function setCartQty(key, value, focusStep) {
+  const item = cart[key];
+  if (!item) return;
+  const max = stockOf(byId.get(item.id));
+  const qty = Math.min(max, Math.max(1, Math.round(Number(value) || 1)));
+  const changed = qty !== item.qty;
+  item.qty = qty;
+  save(CART_KEY, cart);
+  renderCart();
+  if (changed) bumpBadge();
+  // Giỏ được vẽ lại, nên đặt con trỏ bàn phím về đúng nút vừa bấm (nếu nút đó còn bấm được)
+  if (focusStep) {
+    const again = [...document.querySelectorAll('[data-cart-step]')].find((b) => b.dataset.key === key && b.dataset.cartStep === focusStep);
+    if (again && !again.disabled) again.focus();
+  }
 }
 
 export function toggleCart(open) {
@@ -387,6 +423,8 @@ function bindShell() {
       delete cart[t.dataset.remove];
       save(CART_KEY, cart);
       renderCart();
+    } else if (t.dataset.cartStep) {
+      setCartQty(t.dataset.key, cart[t.dataset.key].qty + Number(t.dataset.cartStep), t.dataset.cartStep);
     } else if (t.id === 'cart-btn') {
       toggleCart();
     } else if (t.dataset.tip) {
@@ -400,6 +438,12 @@ function bindShell() {
     } else if ('close' in t.dataset) {
       closeAuth();
     }
+  });
+
+  // Gõ số lượng thẳng vào ô trong giỏ (Enter hoặc bấm ra ngoài thì áp dụng)
+  document.addEventListener('change', (e) => {
+    const input = e.target.closest('[data-cart-qty]');
+    if (input) setCartQty(input.dataset.cartQty, input.value);
   });
 
   $('auth-form').addEventListener('submit', (e) => {

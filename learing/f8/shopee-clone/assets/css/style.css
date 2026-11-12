@@ -104,7 +104,14 @@ svg { width: 1.25em; height: 1.25em; flex: none; }
 }
 .cart__panel h2 { font-size: 14px; color: var(--muted); font-weight: 500; margin-bottom: 8px; }
 .cart__list { max-height: 50vh; overflow-y: auto; }
-.cart__item { display: grid; grid-template-columns: 44px 1fr auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.cart__item { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 10px; align-items: start; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.cart__info { display: grid; gap: 2px; min-width: 0; }
+.cart__controls { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+.cart__line { margin-left: auto; color: var(--primary); font-size: 14px; }
+/* Ô số lượng nhỏ trong giỏ hàng (cùng kiểu với ô ở trang sản phẩm) */
+.qty--sm button { width: 28px; height: 28px; font-size: 16px; transition: background-color 0.15s, color 0.15s; }
+.qty--sm input { width: 40px; height: 28px; font-size: 14px; }
+.qty button:disabled { opacity: 0.35; cursor: default; background: none; color: var(--muted); }
 .cart__thumb { width: 44px; height: 44px; border-radius: 8px; display: grid; place-items: center; font-size: 24px; }
 .cart__name { font-weight: 500; font-size: 14px; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
 .cart__meta { font-size: 13px; color: var(--muted); }
