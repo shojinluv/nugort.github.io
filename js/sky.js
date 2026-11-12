@@ -577,8 +577,10 @@ function buildFarIslands(realm) {
       house.add(at(new THREE.Mesh(new THREE.ConeGeometry(w * 0.78, w * 0.55, 4), material('#ef6f5c', haze)), 0, w * 1.07, 0, 0, Math.PI / 4, 0));
       const glow = material('#3a2e2a', 0, { emissive: '#ffcf7a', emissiveIntensity: 0 });
       windows.push(glow);
-      house.add(at(new THREE.Mesh(new THREE.PlaneGeometry(w * 0.26, w * 0.26), glow), w * 0.18, w * 0.42, w * 0.401));
-      house.add(at(new THREE.Mesh(new THREE.PlaneGeometry(w * 0.22, w * 0.38), glow), -w * 0.2, w * 0.24, w * 0.401));
+      // Cửa sổ và cửa ra vào là tấm mỏng có bề dày, nhô hẳn ra khỏi tường: nhà ở xa, dán sát mặt tường thì hình bị nhấp nháy
+      const pane = (pw, ph, x, y) => house.add(at(new THREE.Mesh(new THREE.BoxGeometry(pw, ph, 0.05), glow), x, y, w * 0.4 + 0.01));
+      pane(w * 0.26, w * 0.26, w * 0.18, w * 0.42);
+      pane(w * 0.22, w * 0.38, -w * 0.2, w * 0.24);
       g.add(house);
       roundTree(s * 0.45, -s * 0.2, s * 0.5, s * 0.28);
     } else if (kind === 'tree') {
