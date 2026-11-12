@@ -503,7 +503,7 @@ function buildPoster(room, world) {
   room.add(g);
 }
 
-// ---------- Tranh cuộn "Thập mục ngưu đồ" treo phía trên đầu giường ----------
+// ---------- Tranh cuộn "Thập mục ngưu đồ" treo ở tường sau, giữa góc kệ sách và mấy tờ giấy ghi chú ----------
 // Mười bức chăn trâu của Thiền tông, vẽ kiểu mực tàu trong mười vòng ensō, đọc từ trái qua phải, trên xuống dưới.
 // Cho hợp với căn phòng: người chăn trâu là một chú mèo Sphynx tai to, bức thứ 9 "trở về nguồn cội"
 // là Trái Đất nhìn từ ngoài vũ trụ, bức thứ 10 "thõng tay vào chợ" thì mèo xách túi hàng màu cam.
@@ -759,10 +759,11 @@ function buildOxScroll(room, world) {
     ctx.fillText('牛', w - 63, h - 90);
   });
 
-  // Gom tranh, hai trục gỗ và dây treo vào một nhóm có id, để rê chuột và bấm vào được như bức tranh bên cạnh
+  // Gom tranh, hai trục gỗ và dây treo vào một nhóm có id, để rê chuột và bấm vào được như bức tranh ở tường trái.
+  // Các phần bên trong dựng theo mặt tranh quay về +x, rồi xoay cả nhóm -90° cho tranh quay ra giữa phòng từ tường sau.
   const W = 1.3;
   const H = (W * 1100) / 512;
-  const g = at(new THREE.Group(), -4.975, 3.42, -1.05);
+  const g = at(new THREE.Group(), -3.55, 3.55, -4.975, 0, -Math.PI / 2, 0);
   const sheet = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95 }));
   g.add(at(sheet, 0.012, 0, 0, 0, Math.PI / 2, 0));
   const wood = '#6b4630';
