@@ -28,6 +28,12 @@ export const ISLAND_TOP = PAD.y + REST_LIFT - 0.14; // độ cao mặt cỏ (to�
 const ROCK_TOP = -1.7;
 const ROCK_DEPTH = 7;
 const rockRadius = (f) => 9.6 * (1 - f) ** 0.75 + 0.2;
+// Bán kính khối đá theo hướng góc a: miệng trên ôm theo đúng đường viền đảo, thụt vào trong lớp đất sẫm
+// (lớp này rộng 0,95 lần mép đảo), để không chỗ nào mép đá chìa ra ngoài lớp đất
+const ROCK_RIM = 0.93;
+const rockShape = (a, f) => (edge(a) * ROCK_RIM * rockRadius(f)) / rockRadius(0);
+// Độ gồ ghề của mặt đá: bằng 0 ở miệng trên rồi tăng dần, xuống sâu chừng 1/5 thân đá thì đủ mức
+const rockBump = (a, y, f) => 1 + Math.min(1, f * 5) * (0.08 * Math.sin(a * 5 + y * 1.3) + 0.06 * Math.sin(a * 11 - y * 2.1));
 
 /** Một điểm (toạ độ thế giới) có nằm trong khối đảo lúc đảo đang nằm yên không. Dùng để chặn camera chui vào đảo. */
 export function insideIsland(x, y, z) {
@@ -38,7 +44,7 @@ export function insideIsland(x, y, z) {
   const r = Math.hypot(lx, lz);
   if (ly > ROCK_TOP - 0.05) return r < edge(Math.atan2(lz, lx)) + 0.15; // lớp cỏ và đất
   const f = (ROCK_TOP - ly) / ROCK_DEPTH;
-  return f <= 1 && r < rockRadius(f) * 1.15; // khối đá (cộng thêm phần gồ ghề)
+  return f <= 1 && r < rockShape(Math.atan2(lz, lx), f) * 1.15; // khối đá (cộng thêm phần gồ ghề)
 }
 
 const FLOOR = 5.4; // nửa cạnh sàn nhà (cộng chút lề), tính từ tâm đảo
@@ -132,14 +138,19 @@ function buildGround(island) {
     const f = i / 10;
     profile.push(new THREE.Vector2(rockRadius(f), ROCK_TOP - f * ROCK_DEPTH));
   }
+  // Đậy kín miệng trên: khối đá để hở thì nhìn chéo qua mép sẽ thấy xuyên vào lòng đá rỗng ra tận bầu trời
+  profile.push(new THREE.Vector2(0, ROCK_TOP));
   const rockGeo = new THREE.LatheGeometry(profile, 28);
   const pos = rockGeo.attributes.position;
   const v = new THREE.Vector3();
   for (let i = 0; i < pos.count; i++) {
     v.fromBufferAttribute(pos, i);
+    const r = Math.hypot(v.x, v.z);
+    if (r < 1e-6) continue; // tâm nắp và mũi nhọn nằm trên trục, giữ nguyên
     const a = Math.atan2(v.z, v.x);
-    const bump = 1 + 0.08 * Math.sin(a * 5 + v.y * 1.3) + 0.06 * Math.sin(a * 11 - v.y * 2.1);
-    pos.setXYZ(i, v.x * bump, v.y, v.z * bump);
+    const f = Math.min(1, (ROCK_TOP - v.y) / ROCK_DEPTH);
+    const s = (rockShape(a, f) * rockBump(a, v.y, f)) / rockRadius(f);
+    pos.setXYZ(i, v.x * s, v.y, v.z * s);
   }
   rockGeo.computeVertexNormals();
   const rockMat = new THREE.MeshStandardMaterial({ color: '#9b8577', roughness: 0.95, flatShading: true });
