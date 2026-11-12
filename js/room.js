@@ -232,13 +232,14 @@ function buildWalls(room, world) {
   ceiling.userData.noPick = true;
   room.add(at(ceiling, -0.15, WALL_H + 0.05, -0.15));
 
-  // Ốp tường màu bạc hà ở nửa dưới, nẹp trắng và len chân tường
+  // Ốp tường màu bạc hà ở nửa dưới, nẹp trắng và len chân tường.
+  // Tấm ốp ngắn hơn nẹp và len 1cm mỗi đầu: đầu tấm ốp mà nằm trùng đầu nẹp ở mép tường thì hình bị nhấp nháy
   const panel = mat('#bfe0d4');
   const trim = mat('#fffaf4');
-  room.add(at(box(10, 1.7, 0.04, panel, 0), 0, 0.85, -4.98));
+  room.add(at(box(9.98, 1.7, 0.04, panel, 0), 0, 0.85, -4.98));
   room.add(at(box(10, 0.1, 0.08, trim, 0.02), 0, 1.72, -4.96));
   room.add(at(box(10, 0.22, 0.06, trim, 0.02), 0, 0.11, -4.97));
-  room.add(at(box(0.04, 1.7, 10, panel, 0), -4.98, 0.85, 0));
+  room.add(at(box(0.04, 1.7, 9.98, panel, 0), -4.98, 0.85, 0));
   room.add(at(box(0.08, 0.1, 10, trim, 0.02), -4.96, 1.72, 0));
   room.add(at(box(0.06, 0.22, 10, trim, 0.02), -4.97, 0.11, 0));
 }
@@ -252,7 +253,8 @@ function buildWindow(room, world) {
   const h = WIN.y2 - WIN.y1;
   const z = -5.15;
 
-  room.add(at(box(w + 0.24, 0.12, 0.42, frame, 0.03), cx, WIN.y2 + 0.06, z)); // khung trên
+  // Khung trên hạ thấp 6mm: mặt dưới của nó mà nằm trùng mặt dưới mảng tường phía trên cửa sổ thì hình bị nhấp nháy
+  room.add(at(box(w + 0.24, 0.12, 0.42, frame, 0.03), cx, WIN.y2 + 0.06 - 0.006, z)); // khung trên
   room.add(at(box(0.12, h, 0.42, frame, 0.03), WIN.x1 - 0.06, cy, z));        // khung trái
   room.add(at(box(0.12, h, 0.42, frame, 0.03), WIN.x2 + 0.06, cy, z));        // khung phải
   // Bậu cửa nhô vào trong. Đặt cao hơn mép tường bên dưới 6mm, vì hai mặt trùng khít nhau thì hình bị nhấp nháy.
@@ -1060,7 +1062,7 @@ function buildAirlock(room, world) {
     const door = new THREE.Group();
     door.add(at(plate(1.7, 3.6, 0.14, 0.05, HATCH.y - 1.9, metal), 0, 1.9, 0));              // khung cửa
     door.add(at(plate(1.3, 3.1, 0.1, 0.08, HATCH.y - 1.85, mat('#eef1f7')), 0, 1.85, 0.1));  // cánh cửa
-    door.add(at(box(1.3, 0.08, 0.02, dark, 0), 0, 1.25, 0.203));         // gân ngang trên cánh cửa
+    door.add(at(box(1.28, 0.08, 0.02, dark, 0), 0, 1.25, 0.203));        // gân ngang (ngắn hơn cánh cửa 1cm để hai đầu không trùng mép cánh cửa)
     door.add(at(new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.3), stripeMat), 0, 0.33, 0.143)); // vạch cảnh báo ở ngưỡng cửa
     door.add(decoration(at(new THREE.Mesh(new THREE.CircleGeometry(HATCH.r, 32), glass), 0, HATCH.y, 0.17))); // kính không đổ bóng
     door.add(at(new THREE.Mesh(new THREE.TorusGeometry(0.39, 0.055, 12, 40), coral), 0, HATCH.y, 0.205));
