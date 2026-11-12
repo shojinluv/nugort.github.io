@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { mat, cylinder, sphere, at, canvasTexture, decoration } from './helpers.js';
 import { PAD, GROUND_SCALE, LAUNCH_H0, launchPose, newLaunchPose } from './space.js';
+import { cloudMaterial } from './sky.js';
 
 // Số ngẫu nhiên riêng của hòn đảo (có hạt giống, lần nào tải trang cũng giống nhau)
 let seed = 4242;
@@ -145,7 +146,6 @@ export function buildIsland(world) {
     glowShrooms.forEach((m, i) => { m.emissiveIntensity = n * (1.3 + 0.4 * Math.sin(t * 1.5 + i * 2)); });
     rocks.forEach((r, i) => { r.position.y = r.userData.y + Math.sin(t * 0.6 + i * 2.1) * 0.25 * calm; r.rotation.y = t * 0.1 * (i + 1) * calm; });
     clouds.forEach((c, i) => { c.position.y = c.userData.y + Math.sin(t * 0.3 + i * 1.7) * 0.35 * calm; });
-    clouds[0].userData.material.emissiveIntensity = 0.35 * (1 - n) + 0.03; // ban đêm mây tối theo trời
     fireflies.update(t, n, calm);
     butterflies.update(t, n, calm);
   });
@@ -980,15 +980,15 @@ function buildFloatingRocks(island) {
 }
 
 // ---------- Mây bông lơ lửng quanh đảo ----------
+// Tô sáng tối giống mây tích trên biển mây (xem cloudMaterial trong sky.js): đỉnh sáng, đáy tối, theo đúng hướng nắng
 function buildClouds(island) {
-  const cloudMat = new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: '#ffffff', emissiveIntensity: 0.35, roughness: 1 });
+  const cloudMat = cloudMaterial();
   return [[13.5, -3.0, 8.0, 1.2], [-6.0, -5.0, 13.5, 1.0], [15.0, -6.0, -6.0, 1.4], [-13.0, -4.0, -3.0, 1.1]].map(([x, y, z, s]) => {
     const g = at(new THREE.Group(), x, y, z);
     [[0, 0, 0, 1], [1.1, -0.2, 0.1, 0.75], [-1.0, -0.25, 0, 0.7], [0.4, 0.45, -0.2, 0.65], [-0.3, -0.3, 0.6, 0.6]].forEach(([px, py, pz, r]) => {
-      g.add(decoration(at(sphere(r * s, cloudMat, 14, 10), px * s, py * s, pz * s)));
+      g.add(decoration(at(sphere(r * s, cloudMat, 20, 14), px * s, py * s, pz * s)));
     });
     g.userData.y = y;
-    g.userData.material = cloudMat;
     island.add(g);
     return g;
   });
