@@ -4,6 +4,7 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Hyperlink?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.ColumnConstraints?>
 <?import javafx.scene.layout.GridPane?>
@@ -16,12 +17,12 @@
         <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
     </padding>
 
-    <Label fx:id="welcomeText" alignment="TOP_CENTER" prefWidth="409.0" text="SUPER IDOL SOCIAL NETWORK">
+    <Label fx:id="welcomeText" alignment="TOP_CENTER" prefWidth="409.0" text="MẠNG XÃ HỘI SUPER IDOL">
       <font>
          <Font name="System Bold" size="21.0" />
       </font></Label>
-   <TextField fx:id="text_field_username" prefHeight="36.0" promptText="Username/Email" />
-   <TextField fx:id="text_field_password" prefHeight="36.0" promptText="Password" />
+   <TextField fx:id="text_field_username" prefHeight="36.0" promptText="Tên đăng nhập hoặc email" />
+   <PasswordField fx:id="text_field_password" prefHeight="36.0" promptText="Mật khẩu" />
    <GridPane alignment="TOP_RIGHT">
      <columnConstraints>
        <ColumnConstraints hgrow="SOMETIMES" maxWidth="108.0" minWidth="10.0" prefWidth="50.0" />
@@ -30,7 +31,7 @@
        <RowConstraints />
      </rowConstraints>
       <children>
-         <Hyperlink fx:id="hyperlink_forgot_password" alignment="CENTER" contentDisplay="CENTER" onAction="#onForgotPasswordClick" text="Forgot password?">
+         <Hyperlink fx:id="hyperlink_forgot_password" alignment="CENTER" contentDisplay="CENTER" onAction="#onForgotPasswordClick" text="Quên mật khẩu?">
             <opaqueInsets>
                <Insets />
             </opaqueInsets>
@@ -49,19 +50,19 @@
        <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
      </rowConstraints>
       <children>
-         <Button fx:id="button_sign_in" mnemonicParsing="false" onAction="#onSiginClick" prefHeight="500.0" prefWidth="500.0" text="Login">
+         <Button fx:id="button_sign_in" mnemonicParsing="false" onAction="#onSignInClick" prefHeight="500.0" prefWidth="500.0" text="Đăng nhập">
             <GridPane.margin>
                <Insets right="10.0" />
             </GridPane.margin>
          </Button>
-         <Button fx:id="button_signup" mnemonicParsing="false" onAction="#onSigupClick" prefHeight="500.0" prefWidth="500.0" text="Be the Super idol" GridPane.columnIndex="1">
+         <Button fx:id="button_signup" mnemonicParsing="false" onAction="#onSignUpClick" prefHeight="500.0" prefWidth="500.0" text="Đăng ký" GridPane.columnIndex="1">
             <GridPane.margin>
                <Insets left="10.0" />
             </GridPane.margin>
          </Button>
       </children>
    </GridPane>
-   <Label fx:id="label_login_status" alignment="CENTER" contentDisplay="CENTER" text="Login status" visible="false">
+   <Label fx:id="label_login_status" alignment="CENTER" contentDisplay="CENTER" text="Trạng thái đăng nhập" visible="false">
       <font>
          <Font name="System Italic" size="15.0" />
       </font>

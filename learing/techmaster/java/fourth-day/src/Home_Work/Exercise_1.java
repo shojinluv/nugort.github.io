@@ -1,44 +1,39 @@
 package Home_Work;
 
-import java.util.Scanner;
+import utils.Input;
 
 public class Exercise_1 {
-    public static void display_name(){
-        Scanner scanner = new Scanner(System.in);
-        String name;
-
-        outer_loop:
-        for (;;) {
-            System.out.println("Input your name: ");
-            name = scanner.nextLine();
-            char[] char_array = name.toCharArray();
-            boolean found_space = true;
-            for (int i = 0; i < char_array.length; i++) {
-                if (Character.isLetter(char_array[i])){
-                    if (found_space) {
-                        char_array[i] = Character.toUpperCase(char_array[i]);
-                        found_space = false;
-                    }
-                } else {
-                    found_space = true;
-                }
+    // Làm lại bằng vòng lặp do/while, thay cho kiểu gọi lại chính hàm này (đệ quy) như trước
+    public static void display_name() {
+        int select;
+        do {
+            System.out.print("Nhập họ tên: ");
+            String name = normalize_name(Input.readLine());
+            while (name.isEmpty()) {
+                System.out.print("Tên không được để trống, nhập lại: ");
+                name = normalize_name(Input.readLine());
             }
-            name = String.valueOf(char_array);
-            System.out.println("Your name: " + name + "\n");
-            System.out.println("Once again my friend 😢");
-            int select;
+            System.out.println("Tên đã chuẩn hoá: " + name);
             do {
-                System.out.println("Select 1 to continue");
-                System.out.println("Select 2 to end");
-                select = scanner.nextInt();
+                System.out.print("Nhập tên khác? (1: có, 2: không): ");
+                select = Input.readInt();
             } while (select < 1 || select > 2);
-            switch (select){
-                case 1:
-                    Exercise_1.display_name();
-                case 2:
-                    break outer_loop;
-            }
-        }
+        } while (select == 1);
+    }
 
+    // Chuẩn hoá tên: bỏ khoảng trắng thừa, viết hoa chữ cái đầu mỗi từ, các chữ còn lại viết thường
+    // ("  nGUYỄN   văn  an " → "Nguyễn Văn An")
+    public static String normalize_name(String name) {
+        StringBuilder result = new StringBuilder();
+        for (String word : name.trim().toLowerCase().split("\\s+")) {
+            if (word.isEmpty()) {
+                continue;
+            }
+            if (result.length() > 0) {
+                result.append(' ');
+            }
+            result.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+        }
+        return result.toString();
     }
 }

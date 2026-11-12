@@ -239,6 +239,8 @@ function openLab(id, { push = true } = {}) {
     runCount++;
     term.clear();
     $('fx-status').textContent = '';
+    $('fx-user').value = '';
+    $('fx-pass').value = '';
   } else {
     run(lesson);
   }
@@ -269,10 +271,22 @@ function setTab(name) {
 }
 for (const b of lab.querySelectorAll('[data-pane]')) b.addEventListener('click', () => setTab(b.dataset.pane));
 
-// Cửa sổ JavaFX dựng lại: các nút gọi đúng tên hàm trong HelloController, mà hàm nào cũng đang trống
+// Cửa sổ JavaFX dựng lại: mỗi nút làm đúng như hàm cùng tên trong HelloController.java.
+// Chỉ so với tài khoản mẫu ngay trên trang, không lưu hay gửi gì đi đâu
+const fxHandlers = {
+  onSignInClick() {
+    const username = $('fx-user').value.trim();
+    const password = $('fx-pass').value;
+    if (!username || !password) return 'Hãy nhập tên đăng nhập và mật khẩu';
+    if (username === 'admin' && password === '123456') return `Chào mừng ${username} quay lại 🌟`;
+    return 'Sai tên đăng nhập hoặc mật khẩu';
+  },
+  onSignUpClick: () => 'Tính năng đăng ký sắp có 🚧',
+  onForgotPasswordClick: () => 'Gợi ý: thử admin / 123456 😉',
+};
 for (const b of document.querySelectorAll('[data-handler]')) {
   b.addEventListener('click', () => {
-    $('fx-status').textContent = `${b.dataset.handler}(…) được gọi, nhưng bên trong chưa có code nên chưa có gì xảy ra 🙂`;
+    $('fx-status').textContent = fxHandlers[b.dataset.handler]();
   });
 }
 

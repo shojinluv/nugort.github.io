@@ -1,21 +1,17 @@
 package Exercises;
 
-import java.util.Scanner;
+import utils.Input;
 
 public class Exercise_1 {
-    public static float hypotenuse_calc(float a_side, float b_side) {
-        float result = (float) Math.sqrt(a_side * a_side + b_side * b_side);
-        return result;
+    public static double hypotenuse_calc(double a_side, double b_side) {
+        return Math.sqrt(a_side * a_side + b_side * b_side);
     }
 
-    public static void side_input(){
-        Scanner scanner = new Scanner(System.in);
-        System.out.println("Input a side length");
-        float a_side = scanner.nextFloat();
-        System.out.println("Input rest length");
-        float b_side = scanner.nextFloat();
-        System.out.printf("Hypotenuse length: %.2f", Exercise_1.hypotenuse_calc(a_side, b_side));
+    public static void side_input() {
+        System.out.print("Cạnh góc vuông thứ nhất: ");
+        double a_side = Input.readPositive();
+        System.out.print("Cạnh góc vuông thứ hai: ");
+        double b_side = Input.readPositive();
+        System.out.printf("Cạnh huyền: %.2f%n", hypotenuse_calc(a_side, b_side));
     }
-
-    private float result;
 }

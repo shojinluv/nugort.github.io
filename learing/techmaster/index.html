@@ -25,13 +25,14 @@
         gõ số rồi nhấn Enter y như trong IntelliJ, xem code gốc ở bên cạnh.
       </p>
       <p class="hero__small">
-        Phần chạy thử là bản dựng lại bằng JavaScript, cố giữ đúng từng chữ in ra, cách tính kiểu float của Java và cả
-        mấy chỗ còn ngô nghê. Bài nào không được gọi trong <code>main</code> thì gọi thẳng hàm của bài đó.
+        Code đã được xào lại: sửa sạn, làm nốt mấy bài còn dở, Việt hoá lời nhắn, gõ sai cũng không văng lỗi nữa (bản nộp
+        hồi 2022 vẫn còn trong lịch sử Git). Phần chạy thử là bản dựng lại bằng JavaScript, giữ đúng từng chữ mà chương
+        trình Java in ra.
       </p>
       <ul class="stats">
         <li><b id="stat-days">7</b> buổi</li>
         <li><b id="stat-lessons">19</b> bài</li>
-        <li><b id="stat-files">38</b> file code</li>
+        <li><b id="stat-files">44</b> file code</li>
       </ul>
     </header>
 
@@ -78,15 +79,16 @@
           <!-- Cửa sổ JavaFX dựng lại theo file hello-view.fxml (400 × 600) -->
           <div class="fx" id="fx" hidden>
             <div class="fx__window">
-              <div class="fx__bar"><span>☕ Hello!</span><span class="fx__ctrl" aria-hidden="true">— ▢ ✕</span></div>
+              <div class="fx__bar"><span>☕ Mạng xã hội Super Idol</span><span class="fx__ctrl" aria-hidden="true">— ▢ ✕</span></div>
               <div class="fx__body">
-                <p class="fx__brand">SUPER IDOL SOCIAL NETWORK</p>
-                <div class="fx__field">Username/Email</div>
-                <div class="fx__field">Password</div>
-                <button type="button" class="fx__link" data-handler="onForgotPasswordClick">Forgot password?</button>
+                <p class="fx__brand">MẠNG XÃ HỘI SUPER IDOL</p>
+                <!-- Bản dựng lại để thử cho vui: không nằm trong form nào, không gửi dữ liệu đi đâu -->
+                <input class="fx__field" id="fx-user" type="text" placeholder="Tên đăng nhập hoặc email" autocomplete="off" spellcheck="false" aria-label="Tên đăng nhập hoặc email">
+                <input class="fx__field" id="fx-pass" type="password" placeholder="Mật khẩu" autocomplete="off" aria-label="Mật khẩu">
+                <button type="button" class="fx__link" data-handler="onForgotPasswordClick">Quên mật khẩu?</button>
                 <div class="fx__buttons">
-                  <button type="button" class="fx__btn" data-handler="onSiginClick">Login</button>
-                  <button type="button" class="fx__btn" data-handler="onSigupClick">Be the Super idol</button>
+                  <button type="button" class="fx__btn" data-handler="onSignInClick">Đăng nhập</button>
+                  <button type="button" class="fx__btn" data-handler="onSignUpClick">Đăng ký</button>
                 </div>
                 <p class="fx__status" id="fx-status" aria-live="polite"></p>
               </div>

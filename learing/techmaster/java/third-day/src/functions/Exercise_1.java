@@ -1,16 +1,23 @@
 package functions;
 
+import utils.Input;
+
 public class Exercise_1 {
-    public static void appearance_of_a(){
-        String default_string = "Hello everyone";
-        char character_e = 'e';
+    // Đếm xem một chữ xuất hiện mấy lần trong câu, không phân biệt hoa thường
+    // (bản đầu chỉ đếm cứng chữ e trong câu "Hello everyone")
+    public static void count_character() {
+        System.out.print("Nhập một câu: ");
+        String sentence = Input.readNonEmpty();
+        System.out.print("Chữ cần đếm: ");
+        char character = Input.readChar();
+
+        char target = Character.toLowerCase(character);
         int count = 0;
-        for (int i = 0; i < default_string.length(); i++) {
-            if (default_string.charAt(i) == character_e) {
+        for (int i = 0; i < sentence.length(); i++) {
+            if (Character.toLowerCase(sentence.charAt(i)) == target) {
                 count++;
             }
         }
-        System.out.println("Appearance of " + character_e +
-                " in " + default_string + ": " + count);
+        System.out.println("Chữ \"" + character + "\" xuất hiện " + count + " lần");
     }
 }

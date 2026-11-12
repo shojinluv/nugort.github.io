@@ -1,37 +1,30 @@
 package On_Lab;
 
+import utils.Input;
+
 public class Array_test {
-
-    public static int Min_Max() {
-        int[] functions_options = new int[4];
-        functions_options[0] = 3;
-        functions_options[1] = 1;
-        functions_options[2] = 0;
-        functions_options[3] = 7;
-
-        int length = functions_options.length;
-        int min = functions_options[0];
-        int max = functions_options[0];
-
-        System.out.println("Default array !");
-        for (int i = 0; i < functions_options.length; i++){
-            System.out.print(functions_options[i] + " ");
+    // Nhập một mảng rồi tìm số nhỏ nhất và lớn nhất trong cùng một vòng lặp
+    // (bản làm trên lớp dùng cứng mảng 3 1 0 7)
+    public static void Min_Max() {
+        System.out.print("Mảng có bao nhiêu phần tử (1-100)? ");
+        int n = Input.readIntBetween(1, 100);
+        int[] numbers = new int[n];
+        for (int i = 0; i < n; i++) {
+            System.out.print("Phần tử thứ " + (i + 1) + ": ");
+            numbers[i] = Input.readInt();
         }
-        System.out.println();
 
-        for (int i = 0; i < functions_options.length; i++){
-            if (min > functions_options[i]){
-                min = functions_options[i];
+        int min = numbers[0];
+        int max = numbers[0];
+        for (int value : numbers) {
+            if (value < min) {
+                min = value;
+            }
+            if (value > max) {
+                max = value;
             }
         }
-        System.out.println("Min: " + min);
-
-        for (int i = 0; i < functions_options.length; i++){
-             if (max < functions_options[i])
-                 max = functions_options[i];
-            }
-        System.out.println("Max: " + max);
-
-        return 0;
+        System.out.println("Nhỏ nhất: " + min);
+        System.out.println("Lớn nhất: " + max);
     }
 }

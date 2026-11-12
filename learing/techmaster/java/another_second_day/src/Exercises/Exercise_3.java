@@ -1,16 +1,25 @@
 package Exercises;
 
-import java.util.Scanner;
+import utils.Input;
 
 public class Exercise_3 {
+    // Đoán số: máy nghĩ một số từ 0 tới 1098, đoán sai thì được gợi ý lớn hơn hay nhỏ hơn
     public static void f__king_random_number() {
-        Scanner scanner = new Scanner(System.in);
-        float random = (float) Math.random();
-        int random_number = (int) (random * 1099);
-        System.out.println("Input your any number");
-        int input_number = scanner.nextInt();
-        System.out.println("Random number: " + random_number);
-        String another_compare = (random_number == input_number) ? "Numbers are equal" : "Numbers not equal";
-        System.out.println(another_compare);
+        int random_number = (int) (Math.random() * 1099);
+        int tries = 0;
+        System.out.println("Mình đang nghĩ một số từ 0 tới 1098, đoán thử xem!");
+        while (true) {
+            System.out.print("Bạn đoán: ");
+            int guess = Input.readInt();
+            tries++;
+            if (guess < random_number) {
+                System.out.println("Số cần tìm lớn hơn ⬆");
+            } else if (guess > random_number) {
+                System.out.println("Số cần tìm nhỏ hơn ⬇");
+            } else {
+                System.out.println("Đúng rồi! Là số " + random_number + ", bạn đoán " + tries + " lần 🎉");
+                return;
+            }
+        }
     }
 }

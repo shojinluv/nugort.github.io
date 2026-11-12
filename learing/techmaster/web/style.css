@@ -528,14 +528,17 @@ button { font: inherit; color: inherit; }
 .fx__brand { margin: 0; text-align: center; font-weight: 800; font-size: 17px; }
 
 .fx__field {
+  width: 100%;
   height: 34px;
   padding: 7px 9px;
   border: 1px solid #c4c4c4;
   border-radius: 3px;
   background: #fff;
-  color: #9a9a9a;
-  font-size: 13px;
+  color: #1d1d1d;
+  font: 13px system-ui, 'Segoe UI', sans-serif;
 }
+.fx__field::placeholder { color: #9a9a9a; }
+.fx__field:focus { outline: none; border-color: #3d8fe0; box-shadow: 0 0 0 2px rgba(61, 143, 224, 0.35); }
 
 .fx__link {
   align-self: flex-end;

@@ -1,8 +1,6 @@
 // jvm.js – "Máy ảo Java" tí hon, vừa đủ để chạy lại mấy bài tập ngay trên trình duyệt.
-// Gồm: in số y như Java (float, double, printf), Scanner đọc chữ gõ vào terminal,
-// System.out, System.exit, và vài lỗi (exception) mà bài tập có thể gặp.
-
-export const fround = Math.fround; // làm tròn về kiểu float (32 bit) giống Java
+// Gồm: printf kiểu Java (%.2f làm tròn "5 thì lên"), lớp Input đọc từng dòng gõ vào terminal (giống utils.Input
+// trong các bài Java), System.out, System.exit, và vài lỗi (exception) mà bài tập có thể gặp.
 
 export class JavaExit {
   constructor(code) { this.code = code; }
@@ -25,35 +23,6 @@ function plain(str) {
   if (point >= digits.length) return sign + digits + '0'.repeat(point - digits.length);
   return `${sign}${digits.slice(0, point)}.${digits.slice(point)}`;
 }
-
-// Cách viết ngắn nhất mà vẫn đúng y con số đó (float thì chỉ cần đủ cho 32 bit)
-function shortest(x, isFloat) {
-  if (!isFloat) return String(x);
-  for (let p = 1; p <= 9; p++) {
-    const s = x.toPrecision(p);
-    if (fround(Number(s)) === x) return s;
-  }
-  return String(x);
-}
-
-// Giống Float.toString / Double.toString: 6.0 thay vì 6, 1.0E7 thay vì 10000000
-function javaToString(x, isFloat) {
-  if (Number.isNaN(x)) return 'NaN';
-  if (!Number.isFinite(x)) return x > 0 ? 'Infinity' : '-Infinity';
-  if (x === 0) return Object.is(x, -0) ? '-0.0' : '0.0';
-  const s = Number(shortest(x, isFloat));
-  const abs = Math.abs(x);
-  if (abs >= 1e-3 && abs < 1e7) {
-    const text = String(s);
-    return text.includes('.') ? text : `${text}.0`;
-  }
-  let [mantissa, exp] = s.toExponential().split('e');
-  if (!mantissa.includes('.')) mantissa += '.0';
-  return `${mantissa}E${Number(exp)}`;
-}
-
-export const F = (x) => javaToString(fround(x), true); // in một số float
-export const D = (x) => javaToString(x, false);        // in một số double
 
 // %.2f của Java: lấy các chữ số của số đó rồi làm tròn "5 thì lên"
 function fixed(x, places) {
@@ -94,7 +63,7 @@ export function format(fmt, args) {
   });
 }
 
-// ---------- System.out, Scanner, System.exit ----------
+// ---------- System.out, Input, System.exit ----------
 // term: ô terminal trên trang (xem app.js), có write(text) và readLine() trả về dòng người xem gõ
 export function makeSystem(term) {
   let budget = 200000; // số ký tự tối đa được in trong một lần chạy
@@ -109,59 +78,67 @@ export function makeSystem(term) {
     printf: (fmt, ...args) => write(format(fmt, args)),
   };
 
-  const mismatch = (token) => new JavaException('java.util.InputMismatchException', token ? `For input string: "${token}"` : '');
-  const NUMBER = /^[+-]?(\d+([.,]\d*)?|[.,]\d+)([eE][+-]?\d+)?$/;
-
-  // Mỗi Scanner có bộ đệm riêng, y như Java: nextInt() đọc xong một số thì dấu xuống dòng phía sau vẫn còn nằm lại,
-  // nên nextLine() ngay sau đó trên cùng Scanner sẽ trả về chuỗi rỗng
-  class Scanner {
-    constructor() { this.buf = ''; }
-
-    async more() { this.buf += `${await term.readLine()}\n`; }
-
-    // Tìm "từ" kế tiếp (bỏ qua khoảng trắng, xuống dòng); chưa có thì chờ người xem gõ thêm
-    async peek() {
+  // Giống lớp utils.Input trong các bài Java: mỗi lần đọc nguyên một dòng, gõ sai thì nhắc gõ lại
+  // (Integer.parseInt, Double.parseDouble: có thể có dấu +/-, phần mũ e, đuôi f/d)
+  const DOUBLE = /^[+-]?(NaN|Infinity|(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?[fFdD]?)$/;
+  const input = {
+    readLine: () => term.readLine(),
+    async readNonEmpty() {
       for (;;) {
-        const m = /^\s*(\S+)\s/.exec(this.buf);
-        if (m) return m;
-        await this.more();
+        const line = await term.readLine();
+        if (line.trim() !== '') return line;
+        out.print('Bạn chưa nhập gì, nhập lại: ');
       }
-    }
-
-    take(m) { this.buf = this.buf.slice(m[0].length - 1); }
-
-    async nextInt() {
-      const m = await this.peek();
-      const t = m[1];
-      if (!/^[+-]?\d+$/.test(t)) throw mismatch();
-      const v = Number(t);
-      if (v > 2147483647 || v < -2147483648) throw mismatch(t);
-      this.take(m);
-      return v;
-    }
-
-    async nextDouble() {
-      const m = await this.peek();
-      if (!NUMBER.test(m[1])) throw mismatch();
-      this.take(m);
-      return Number(m[1].replace(',', '.')); // nhận cả 3,5 lẫn 3.5 cho tiện
-    }
-
-    async nextFloat() { return fround(await this.nextDouble()); }
-
-    async nextLine() {
+    },
+    async readChar() {
       for (;;) {
-        const i = this.buf.indexOf('\n');
-        if (i >= 0) {
-          const line = this.buf.slice(0, i);
-          this.buf = this.buf.slice(i + 1);
-          return line;
+        const line = await term.readLine();
+        if (line.length === 1) return line; // một ký tự (một đơn vị UTF-16, như char của Java)
+        out.print('Hãy nhập đúng một ký tự: ');
+      }
+    },
+    async readIntBetween(min, max) {
+      for (;;) {
+        const v = await input.readInt();
+        if (v >= min && v <= max) return v;
+        out.print(`Hãy nhập số từ ${min} tới ${max}: `);
+      }
+    },
+    async readInt() {
+      for (;;) {
+        const line = (await term.readLine()).trim();
+        if (/^[+-]?\d+$/.test(line)) {
+          const v = Number(line) + 0; // + 0: "-0" thành 0 như Java
+          if (v >= -2147483648 && v <= 2147483647) return v;
         }
-        await this.more();
+        out.print('Hãy nhập một số nguyên: ');
       }
-    }
-  }
+    },
+    async readDouble() {
+      for (;;) {
+        const line = (await term.readLine()).trim().replaceAll(',', '.');
+        if (DOUBLE.test(line)) {
+          const v = Number(line.replace(/[fFdD]$/, ''));
+          if (Number.isFinite(v)) return v;
+        }
+        out.print('Hãy nhập một số: ');
+      }
+    },
+    async readPositive() {
+      for (;;) {
+        const v = await input.readDouble();
+        if (v > 0) return v;
+        out.print('Hãy nhập một số lớn hơn 0: ');
+      }
+    },
+  };
 
   const exit = (code) => { throw new JavaExit(code); };
-  return { out, Scanner, exit };
+  return { out, input, exit };
+}
+
+// In số cho gọn như hàm pretty() trong second-day/src/main.java: 3 thay vì 3.0, tối đa 4 chữ số lẻ
+export function pretty(v) {
+  if (v === Math.round(v) && Math.abs(v) < 1e15) return String(v + 0);
+  return format('%.4f', [v]).replace(/\.?0+$/, '');
 }
