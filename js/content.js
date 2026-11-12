@@ -6,7 +6,7 @@
 export const labels = {
   computer: 'Máy tính · Về mình',
   guitar: 'Cây đàn · The Band',
-  bag: 'Túi hàng · Shopee clone',
+  bag: 'Túi hàng · Chợ Nugỏrt',
   lamp: 'Đèn bàn · Đổi ngày/đêm',
   cat: 'Mèo Sphynx · Đang ngủ',
   plant: 'Cây Monstera · Tưới cây',
@@ -69,13 +69,13 @@ export const content = {
     links: [{ text: 'Mở trang The Band', href: 'learing/f8/the-band/index.html' }],
   },
   bag: {
-    tag: 'Dự án · Đang làm',
-    title: 'Shopee clone',
+    tag: 'Dự án · HTML/CSS/JS',
+    title: 'Chợ Nugỏrt',
     body: [
-      'Bài tập dựng lại giao diện trang thương mại điện tử Shopee, cũng theo khóa F8.',
-      'Mới xong một phần thanh điều hướng, phần còn lại đang được "giao hàng" từ từ 📦',
+      'Một sàn thương mại điện tử nho nhỏ, khởi đầu từ bài tập dựng lại giao diện Shopee của khóa F8.',
+      'Có tìm kiếm, lọc theo danh mục, giỏ hàng, và trang chi tiết từng món với phân loại, đánh giá. Hàng hóa đều là đồ lặt vặt trong căn phòng này 📦',
     ],
-    links: [{ text: 'Xem bản đang làm', href: 'learing/f8/shopee-clone/index.html' }],
+    links: [{ text: 'Ghé Chợ Nugỏrt', href: 'learing/f8/shopee-clone/index.html' }],
   },
   scroll: {
     tag: 'Tranh cuộn · Thiền',
