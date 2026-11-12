@@ -390,6 +390,58 @@ body.is-night .progress.is-done {
   to { transform: translateX(28px); }
 }
 
+/* Đếm ngược tới ngày mây tan */
+.countdown {
+  margin-top: 14px;
+  padding: 14px 12px 12px;
+  border-radius: 16px;
+  text-align: center;
+  background: rgba(239, 111, 92, 0.08);
+}
+
+.countdown[hidden],
+.countdown__grid[hidden] { display: none; }
+
+.countdown__label {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.countdown__grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+}
+
+.countdown__unit {
+  display: grid;
+  gap: 2px;
+  padding: 8px 0 6px;
+  border-radius: 12px;
+  font-size: 11px;
+  color: var(--ink-soft);
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(60, 30, 20, 0.08);
+}
+
+.countdown__unit b {
+  font-size: 19px;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.countdown__date {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
 .panel__links {
   display: flex;
   flex-wrap: wrap;

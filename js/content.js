@@ -96,6 +96,8 @@ export const content = {
     tag: 'Vùng cấm',
     title: 'Di sản của Trâm Anh',
     locked: true,
+    // Ngày mây tan: đếm ngược tới đúng 12 giờ trưa 22/7/2062 theo giờ Việt Nam (UTC+7)
+    unlock: { at: '2062-07-22T12:00:00+07:00', text: '12:00 trưa · 22/7/2062 · giờ Việt Nam' },
     body: [
       'Phía sau lớp mây này là một câu chuyện chưa đến lúc được kể ra.',
       'Chỉ người giữ chìa khoá mới biết trong đây cất giữ điều gì, và vì sao nó lại nằm ở đây.',

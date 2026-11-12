@@ -20,6 +20,7 @@ const ui = {
   panelImg: $('#panel-img'),
   panelBody: $('#panel-body'),
   panelLinks: $('#panel-links'),
+  panelCountdown: $('#panel-countdown'),
   panelClose: $('#panel-close'),
   nightBtn: $('#btn-night'),
   spaceBtn: $('#btn-space'),
@@ -265,6 +266,7 @@ function openPanel(id, obj) {
   ui.panelLinks.replaceChildren(...(c.links || []).map((link) => Object.assign(document.createElement('a'), {
     href: link.href, textContent: link.text, className: 'btn', target: '_blank', rel: 'noopener',
   })));
+  startCountdown(c.unlock);
   ui.panel.classList.add('is-open');
   ui.panel.setAttribute('aria-hidden', 'false');
   ui.panel.scrollTop = 0;
@@ -277,12 +279,70 @@ function openPanel(id, obj) {
 function closePanel() {
   if (!openId) return;
   openId = null;
+  startCountdown(null);
   ui.panel.classList.remove('is-open');
   ui.panel.setAttribute('aria-hidden', 'true');
   if (savedView) flyTo(savedView.target, savedView.position, 1);
   savedView = null;
 }
 ui.panelClose.addEventListener('click', closePanel);
+
+// ===== 9a. Đếm ngược tới ngày mây tan (khung "vùng cấm") =====
+// Mọi mốc thời gian đều dời sang giờ Việt Nam (UTC+7) rồi đọc bằng các hàm UTC, để ai ở múi giờ nào
+// mở trang cũng đếm về cùng một thời khắc, và năm, tháng, ngày được cộng đúng theo lịch
+const VN = 7 * 3600e3;
+const UNITS = ['năm', 'tháng', 'ngày', 'giờ', 'phút', 'giây'];
+let countdownTimer = 0;
+const later = (d, field, n) => {
+  const x = new Date(d);
+  x[`setUTC${field}`](x[`getUTC${field}`]() + n);
+  return x;
+};
+function timeLeft(end) {
+  let cursor = new Date(Date.now() + VN);
+  const goal = new Date(end.getTime() + VN);
+  if (cursor >= goal) return null;
+  const count = (field) => {
+    let n = 0;
+    while (later(cursor, field, 1) <= goal) {
+      cursor = later(cursor, field, 1);
+      n++;
+    }
+    return n;
+  };
+  const years = count('FullYear');
+  const months = count('Month');
+  const days = count('Date');
+  const s = Math.floor((goal - cursor) / 1000);
+  return [years, months, days, Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60];
+}
+function startCountdown(unlock) {
+  clearInterval(countdownTimer);
+  ui.panelCountdown.hidden = !unlock;
+  if (!unlock) return;
+  const end = new Date(unlock.at);
+  const label = Object.assign(document.createElement('p'), { className: 'countdown__label' });
+  const grid = Object.assign(document.createElement('div'), { className: 'countdown__grid' });
+  const cells = UNITS.map((unit) => {
+    const cell = Object.assign(document.createElement('span'), { className: 'countdown__unit' });
+    const num = document.createElement('b');
+    cell.append(num, unit);
+    grid.append(cell);
+    return num;
+  });
+  const date = Object.assign(document.createElement('p'), { className: 'countdown__date', textContent: unlock.text });
+  ui.panelCountdown.replaceChildren(label, grid, date);
+  const tick = () => {
+    const left = timeLeft(end);
+    label.textContent = left ? 'Mây sẽ tan sau' : 'Đã tới ngày hẹn ☀️';
+    grid.hidden = !left;
+    if (!left) return clearInterval(countdownTimer);
+    left.forEach((n, i) => { cells[i].textContent = i < 3 ? n : String(n).padStart(2, '0'); });
+    grid.setAttribute('aria-label', left.map((n, i) => `${n} ${UNITS[i]}`).join(' '));
+  };
+  tick();
+  countdownTimer = setInterval(tick, 1000);
+}
 window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePanel(); });
 
 // Khi khung thông tin mở, dịch khung hình 3D sang trái (máy tính) hoặc lên trên (điện thoại)
