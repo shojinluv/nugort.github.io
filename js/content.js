@@ -8,7 +8,7 @@ export const labels = {
   guitar: 'Cây đàn · The Band',
   bag: 'Túi hàng · Chợ Nugỏrt',
   lamp: 'Đèn bàn · Đổi ngày/đêm',
-  cat: 'Mèo Sphynx · Mê ngủ, mê cá',
+  cat: 'Mèo Sphynx · Đang ngủ',
   plant: 'Cây Monstera · Tưới cây',
   poster: 'Bức tranh · Di sản của Trâm Anh',
   scroll: 'Tranh cuộn · Thập mục ngưu đồ',

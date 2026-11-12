@@ -50,8 +50,7 @@ export function insideIsland(x, y, z) {
 const FLOOR = 5.4; // nửa cạnh sàn nhà (cộng chút lề), tính từ tâm đảo
 const POND = { a: 0.2, r: 7.6, size: 1.25 };
 const [PX, PZ] = polar(POND.a, POND.r);
-const POND_Y = -0.05;  // mặt nước ao (cao hơn mặt cỏ một chút, để cá có chỗ bơi bên dưới)
-const CAT_SPOT = 1.75; // mèo ra nằm chơi ở mép ao phía căn phòng (phía -x), cách tâm ao chừng này
+const POND_Y = -0.05; // mặt nước ao (cao hơn mặt cỏ một chút, để cá có chỗ bơi bên dưới)
 const LANTERN = [3.4, 7.0];
 const SIGN = [-0.7, 7.5];
 const STONES = [[1.3, 6.1], [1.9, 6.95], [1.35, 7.8], [1.95, 8.6]];
@@ -62,7 +61,6 @@ function freeSpot(x, z, margin = 0.6) {
   if (r > edge(Math.atan2(z, x)) - margin) return false;
   if (Math.abs(x) < FLOOR && Math.abs(z) < FLOOR) return false;
   if (Math.hypot(x - PX, z - PZ) < POND.size + 0.5) return false;
-  if (Math.hypot(x - (PX - CAT_SPOT - 0.1), z - PZ) < 0.8) return false; // chỗ mèo ra nằm chơi bên ao
   if (Math.abs(x - 1.6) < 0.7 && z > FLOOR) return false;
   if (Math.hypot(x - LANTERN[0], z - LANTERN[1]) < 0.5 || Math.hypot(x - SIGN[0], z - SIGN[1]) < 0.8) return false;
   return true;
@@ -80,30 +78,6 @@ export function buildIsland(world) {
   buildFlowers(island);
   const glowShrooms = buildMushrooms(island);
   const water = buildPond(island);
-  // Cho con mèo trong phòng thỉnh thoảng ra ao chơi với cá (xem buildCat trong furniture.js).
-  // Các điểm ở đây tính theo toạ độ thế giới; mèo chỉ ra ao lúc hòn đảo đang nằm yên.
-  const fishPos = new THREE.Vector3();
-  const toWorld = (x, y, z) => {
-    island.updateWorldMatrix(true, false); // vị trí đảo vừa được cập nhật trong khung hình này
-    return island.localToWorld(new THREE.Vector3(x, y, z));
-  };
-  world.pond = {
-    spot: () => toWorld(PX - CAT_SPOT, -0.14, PZ), // mặt cỏ chỗ mèo nằm
-    center: () => toWorld(PX, POND_Y, PZ),
-    nearestFish(point, out) {
-      let best = Infinity;
-      for (const f of water.fishes) {
-        f.getWorldPosition(fishPos);
-        const d = fishPos.distanceToSquared(point);
-        if (d < best) {
-          best = d;
-          out.copy(fishPos);
-        }
-      }
-      return out;
-    },
-    splash: (point) => water.splash(island.worldToLocal(point.clone())),
-  };
   const lantern = buildPathAndLantern(island);
   const rocks = buildFloatingRocks(island);
   const clouds = buildClouds(island);
@@ -125,7 +99,7 @@ export function buildIsland(world) {
     island.scale.setScalar(size);
 
     const n = world.night;
-    water.update(t, dt, calm);
+    water.update(t, dt, calm, world.night);
     lantern.update(n, t);
     glowShrooms.forEach((m, i) => { m.emissiveIntensity = n * (1.3 + 0.4 * Math.sin(t * 1.5 + i * 2)); });
     rocks.forEach((r, i) => { r.position.y = r.userData.y + Math.sin(t * 0.6 + i * 2.1) * 0.25 * calm; r.rotation.y = t * 0.1 * (i + 1) * calm; });
@@ -521,11 +495,9 @@ function buildPond(island) {
     color: '#8fd6ee', roughness: 0.1, metalness: 0.1, emissive: '#2a6f9a', emissiveIntensity: 0.15, transparent: true, opacity: 0.55,
   });
   island.add(at(new THREE.Mesh(new THREE.CircleGeometry(POND.size, 32), pondMat), PX, POND_Y, PZ, -Math.PI / 2, 0, 0));
-  // Viền đá quanh ao: chừa một khe cho nước chảy ra suối, một khe phía căn phòng cho mèo ra nằm chơi
   for (let i = 0; i < 11; i++) {
-    const a = Math.PI + (i / 11) * Math.PI * 2;
-    const off = (b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
-    if (off(POND.a) < 0.4 || off(Math.PI) < 0.3) continue;
+    const a = (i / 11) * Math.PI * 2;
+    if (Math.abs(Math.atan2(Math.sin(a - POND.a), Math.cos(a - POND.a))) < 0.4) continue; // chừa chỗ cho nước chảy ra
     const s = sphere(between(0.2, 0.3), '#c9c1b8', 8, 6);
     s.scale.y = 0.5;
     island.add(at(s, PX + Math.cos(a) * (POND.size + 0.05), -0.1, PZ + Math.sin(a) * (POND.size + 0.05)));
@@ -534,16 +506,18 @@ function buildPond(island) {
   island.add(at(pad, PX - 0.35, POND_Y + 0.01, PZ - 0.3, -Math.PI / 2, 0, 0));
   island.add(at(sphere(0.09, '#ff9ec4', 10, 8), PX - 0.35, POND_Y + 0.07, PZ - 0.3));
 
-  // Cá chép Koi bơi lượn vòng quanh ao. Mèo vỗ nước gần con nào thì con đó giật mình bơi vụt đi
+  // Cá chép Koi: ban ngày bơi lượn vòng quanh ao; đêm xuống thì lần lượt bơi về nằm ngủ quanh lá sen,
+  // đuôi chỉ còn khẽ phe phẩy, thỉnh thoảng nhả bong bóng; sáng ra lại tản ra bơi tiếp.
+  // rest: chỗ ngủ tính từ tâm ao [x, z] và hướng đầu cá lúc nằm ngủ
   const FISH_Y = -0.09;
   const finGeo = new THREE.CircleGeometry(0.09, 10, Math.PI - 0.75, 1.5).rotateX(-Math.PI / 2); // vây đuôi xoè hình quạt
   const sideFinGeo = new THREE.CircleGeometry(0.045, 8, Math.PI * 0.55, 0.9).rotateX(-Math.PI / 2);
   const fishes = [
-    { body: '#ff7a3a', fin: '#ffb38a', r: 0.55, v: 0.32, phase: 0 },
-    { body: '#fff3e8', fin: '#ffffff', spot: '#ff6a3a', r: 0.78, v: -0.26, phase: 2.1 },
-    { body: '#ffb347', fin: '#ffe0a8', r: 0.38, v: 0.28, phase: 4.0 },
-    { body: '#ff5a4a', fin: '#ff9f8f', spot: '#fff3e8', r: 0.8, v: 0.22, phase: 1.2 },
-    { body: '#3a3333', fin: '#6a5f5f', spot: '#ff7a3a', r: 0.66, v: -0.34, phase: 5.2 },
+    { body: '#ff7a3a', fin: '#ffb38a', r: 0.55, v: 0.32, phase: 0, rest: [-0.35, -0.05, 0.3], drowsy: 0.45 },
+    { body: '#fff3e8', fin: '#ffffff', spot: '#ff6a3a', r: 0.78, v: -0.26, phase: 2.1, rest: [-0.05, -0.45, 2.0], drowsy: 0.3 },
+    { body: '#ffb347', fin: '#ffe0a8', r: 0.38, v: 0.28, phase: 4.0, rest: [-0.6, -0.5, -0.6], drowsy: 0.38 },
+    { body: '#ff5a4a', fin: '#ff9f8f', spot: '#fff3e8', r: 0.8, v: 0.22, phase: 1.2, rest: [0.15, -0.05, 2.8], drowsy: 0.25 },
+    { body: '#3a3333', fin: '#6a5f5f', spot: '#ff7a3a', r: 0.66, v: -0.34, phase: 5.2, rest: [-0.3, 0.35, -1.2], drowsy: 0.33 },
   ].map((f) => {
     const g = new THREE.Group();
     const body = sphere(0.1, f.body, 14, 10);
@@ -567,45 +541,26 @@ function buildPond(island) {
     g.position.set(PX + Math.cos(f.phase) * f.r, FISH_Y, PZ + Math.sin(f.phase) * f.r);
     g.scale.set(1.2, 1, 1.2); // to ra cho dễ nhìn từ xa, giữ nguyên bề dày để không nhô lên khỏi mặt nước
     island.add(g);
-    return { ...f, g, tail, angle: f.phase, heading: 0, boost: 0 };
+    return { ...f, g, tail, angle: f.phase, heading: 0, sleep: 0, swish: 0 };
   });
 
-  // Gợn sóng và mấy giọt nước bắn lên mỗi lần mèo vỗ nước
-  const rippleMat = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0, depthWrite: false });
-  const ripples = [0, 1, 2].map(() => {
-    const m = decoration(new THREE.Mesh(new THREE.RingGeometry(0.06, 0.085, 28).rotateX(-Math.PI / 2), rippleMat.clone()));
-    m.visible = false;
-    island.add(m);
-    return { m, life: 0 };
+  // Bong bóng ngủ: mấy con cá đang say giấc thỉnh thoảng nhả một bong bóng nhỏ, nổi lên rồi tan (như chữ "z" của mèo)
+  const bubbleTex = canvasTexture(64, 64, (ctx) => {
+    ctx.strokeStyle = 'rgba(225, 248, 255, 0.95)';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(32, 32, 24, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.beginPath();
+    ctx.arc(23, 22, 6, 0, Math.PI * 2);
+    ctx.fill();
   });
-  const dropMat = new THREE.MeshStandardMaterial({ color: '#d6f3ff', emissive: '#7fcbe8', emissiveIntensity: 0.4, roughness: 0.2 });
-  const drops = Array.from({ length: 8 }, () => {
-    const m = decoration(sphere(0.022, dropMat, 8, 6));
-    m.visible = false;
-    island.add(m);
-    return { m, v: new THREE.Vector3(), life: 0 };
+  const bubbles = fishes.slice(0, 3).map((f) => {
+    const s = decoration(new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTex, transparent: true, depthWrite: false, opacity: 0 })));
+    island.add(s);
+    return { s, f };
   });
-  let nextRipple = 0;
-  const splash = (p) => {
-    const r = ripples[nextRipple++ % ripples.length];
-    r.life = 1;
-    r.m.position.set(p.x, POND_Y + 0.004, p.z);
-    drops.forEach((d) => {
-      const a = Math.random() * Math.PI * 2;
-      const s = 0.25 + Math.random() * 0.45;
-      d.m.position.set(p.x, POND_Y + 0.02, p.z);
-      d.v.set(Math.cos(a) * s, 1.1 + Math.random() * 0.8, Math.sin(a) * s);
-      d.life = 1;
-    });
-    for (const f of fishes) {
-      const dx = p.x - f.g.position.x;
-      const dz = p.z - f.g.position.z;
-      if (dx * dx + dz * dz > 0.8 * 0.8) continue;
-      f.boost = 1;
-      // Đang bơi về phía chỗ vỗ nước thì quay đầu bơi ngược lại
-      if (Math.cos(f.heading) * dx - Math.sin(f.heading) * dz > 0) f.v = -f.v;
-    }
-  };
 
   // Suối và thác nước: một dải nước liền mạch chảy từ ao ra mép đảo, vọt qua mép rồi cong dần xuống
   // theo đường parabol như nước thật. Càng rơi càng nhanh (vệt nước kéo dài ra), loe rộng và tan dần thành hơi nước.
@@ -715,7 +670,7 @@ function buildPond(island) {
   });
 
   return {
-    update(t, dt, calm) {
+    update(t, dt, calm, night) {
       bodyTex.offset.y += dt * 0.6 * calm;
       coreTex.offset.y += dt * 0.75 * calm;
       foams.forEach((f, i) => {
@@ -728,40 +683,42 @@ function buildPond(island) {
         s.material.opacity = 0.5 * Math.sin(k * Math.PI);
       });
 
-      // Cá bơi vòng quanh ao, lúc gần lúc xa tâm ao; giật mình thì bơi nhanh gấp mấy lần rồi chậm dần lại
+      // Cá bơi vòng quanh ao, lúc gần lúc xa tâm ao. Mỗi con buồn ngủ nhanh chậm khác nhau:
+      // đêm xuống thì bơi chậm dần rồi về chỗ ngủ, nằm yên quay đầu về một hướng; sáng ra thì ngược lại
       for (const f of fishes) {
-        f.boost = Math.max(0, f.boost - dt * 0.8);
+        f.sleep += (night - f.sleep) * Math.min(1, dt * f.drowsy);
+        const sleep = THREE.MathUtils.smoothstep(f.sleep, 0, 1);
+        const awake = 1 - sleep;
         const r = f.r + 0.12 * Math.sin(t * 0.37 + f.phase);
-        f.angle += (f.v / r) * (1 + 3 * f.boost) * dt * calm;
-        const x = PX + Math.cos(f.angle) * r;
-        const z = PZ + Math.sin(f.angle) * r;
+        f.angle += (f.v / r) * awake * dt * calm;
+        const x = THREE.MathUtils.lerp(PX + Math.cos(f.angle) * r, PX + f.rest[0], sleep);
+        const z = THREE.MathUtils.lerp(PZ + Math.sin(f.angle) * r, PZ + f.rest[1], sleep);
         const dx = x - f.g.position.x;
         const dz = z - f.g.position.z;
-        if (dx * dx + dz * dz > 1e-10) {
-          const want = Math.atan2(-dz, dx);
-          f.heading += Math.atan2(Math.sin(want - f.heading), Math.cos(want - f.heading)) * Math.min(1, dt * 10);
-        }
-        f.g.position.set(x, FISH_Y, z);
-        f.g.rotation.y = f.heading + Math.sin(t * 5 + f.phase) * 0.06 * calm; // thân uốn nhẹ theo nhịp bơi
-        f.tail.rotation.y = Math.sin(t * (6 + 12 * f.boost) + f.phase) * 0.45 * calm;
+        // Đang bơi thì đầu hướng theo đường bơi; sắp ngủ thì xoay dần về hướng nằm ngủ
+        let want = f.heading;
+        if (sleep > 0.85) want = f.rest[2];
+        else if (dx * dx + dz * dz > 1e-10) want = Math.atan2(-dz, dx);
+        f.heading += Math.atan2(Math.sin(want - f.heading), Math.cos(want - f.heading)) * Math.min(1, dt * (sleep > 0.85 ? 2 : 10));
+        f.g.position.set(x, FISH_Y - 0.008 * sleep + Math.sin(t * 0.8 + f.phase) * 0.003 * sleep, z);
+        f.g.rotation.y = f.heading + Math.sin(t * 5 + f.phase) * 0.06 * awake * calm; // thân uốn nhẹ theo nhịp bơi
+        f.swish += dt * (6 * awake + 1.5 * sleep) * calm; // ngủ thì đuôi chỉ khẽ phe phẩy
+        f.tail.rotation.y = Math.sin(f.swish + f.phase) * (0.45 * awake + 0.1 * sleep);
       }
-      for (const r of ripples) {
-        r.life = Math.max(0, r.life - dt);
-        r.m.visible = r.life > 0;
-        r.m.scale.setScalar(1 + (1 - r.life) * 6);
-        r.m.material.opacity = 0.8 * r.life;
-      }
-      for (const d of drops) {
-        if (d.life <= 0) continue;
-        d.v.y -= 6 * dt;
-        d.m.position.addScaledVector(d.v, dt);
-        d.life -= dt;
-        d.m.visible = d.life > 0 && d.m.position.y > POND_Y;
-        if (!d.m.visible) d.life = 0;
-      }
+      // Bong bóng ngủ nổi lên từ đầu mấy con cá đang ngủ say, mỗi con một nhịp
+      bubbles.forEach(({ s, f }, i) => {
+        const p = (t * 0.3 + i / 3) % 1;
+        const deep = THREE.MathUtils.smoothstep(f.sleep, 0.75, 1);
+        s.position.set(
+          f.g.position.x + Math.cos(f.heading) * 0.14 + Math.sin(p * 6 + i) * 0.03,
+          POND_Y + 0.03 + p * 0.45,
+          f.g.position.z - Math.sin(f.heading) * 0.14,
+        );
+        s.scale.setScalar(0.05 + p * 0.07);
+        s.material.opacity = Math.sin(p * Math.PI) * 0.85 * deep;
+        s.visible = deep > 0.01;
+      });
     },
-    splash,
-    fishes: fishes.map((f) => f.g),
   };
 }
 
