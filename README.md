@@ -49,6 +49,7 @@ js/room.js          Vỏ phòng: sàn, tường, cửa sổ, tia nắng, dây đ
 js/furniture.js     Đồ đạc: bàn, máy tính, đèn, giường, cây, đàn, túi hàng, mèo…
 js/space.js         Chế độ vũ trụ: đường bay lên từ mặt đất, sao, Ngân Hà, Mặt Trời, hành tinh, Trái Đất, sao băng, đồ đạc trôi lơ lửng
 js/island.js        Bối cảnh Trái Đất: hòn đảo cỏ lơ lửng kiểu cổ tích (cây, nấm, hoa, ao, thác nước, đèn lồng, bướm, đom đóm)
+js/sky.js           Quanh hòn đảo: biển mây tới chân trời, đảo bay xa, Mặt Trời ban ngày, trăng và sao ban đêm
 js/helpers.js       Hàm tiện ích để dựng hình hộp, hình trụ, texture vẽ bằng canvas
 js/content.js       Chữ và link trong khung thông tin (sửa nội dung ở đây)
 vendor/three/       Thư viện Three.js r186 (giấy phép MIT)

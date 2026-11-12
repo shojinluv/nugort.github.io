@@ -6,6 +6,7 @@ import { buildRoom, SUN_DIR, WALL_H, HATCH } from './room.js';
 import { buildFurniture } from './furniture.js';
 import { buildSpace } from './space.js';
 import { buildIsland, insideIsland, ISLAND_TOP } from './island.js';
+import { buildRealm } from './sky.js';
 import {
   content, labels, spaceLabels, skyLabels, skyFacts, catLines, catSpaceLines, catPeekLines, plantLines, plantSpaceLines,
 } from './content.js';
@@ -109,6 +110,7 @@ buildRoom(world);
 buildFurniture(world);
 buildSpace(world);
 buildIsland(world); // hòn đảo cổ tích dưới chân căn phòng (bối cảnh Trái Đất)
+buildRealm(world);  // biển mây, đảo bay xa, Mặt Trời, trăng và sao quanh hòn đảo
 
 // Bật đổ bóng cho mọi vật thể, và lập danh sách vật thể có thể "bắn tia" chuột trúng
 const pickables = [];
