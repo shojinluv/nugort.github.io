@@ -22,15 +22,64 @@
         </button>
       </h2>
       <ul class="cats" id="cats"></ul>
+
+      <!-- Bộ lọc: điện thoại thì gập lại sau một nút, màn rộng thì mở sẵn (bấm tiêu đề để gập như phần Danh mục) -->
+      <section class="filters" id="filters" aria-label="Bộ lọc">
+        <h2 class="filters__head">
+          <button class="sidebar__toggle filters__toggle" id="filters-toggle" type="button" aria-expanded="true" aria-controls="filters-body">
+            <svg aria-hidden="true"><use href="#i-filter"></use></svg> Bộ lọc
+            <span class="filters__badge" id="filters-badge" hidden></span>
+            <svg class="sidebar__chevron" aria-hidden="true"><use href="#i-back"></use></svg>
+          </button>
+        </h2>
+        <div class="filters__body" id="filters-body">
+          <form class="filters__group" id="price-form" novalidate>
+            <h3>Khoảng giá</h3>
+            <div class="price-range">
+              <label class="sr-only" for="price-min">Giá thấp nhất</label>
+              <input class="price-range__input" id="price-min" inputmode="numeric" placeholder="₫ TỪ" autocomplete="off">
+              <span aria-hidden="true">–</span>
+              <label class="sr-only" for="price-max">Giá cao nhất</label>
+              <input class="price-range__input" id="price-max" inputmode="numeric" placeholder="₫ ĐẾN" autocomplete="off">
+            </div>
+            <p class="filters__hint">Gõ tắt kiểu 100k hay 2tr cũng được</p>
+            <p class="filters__error" id="price-error" role="alert" hidden>Giá thấp nhất đang lớn hơn giá cao nhất</p>
+            <button class="btn btn--primary filters__apply" type="submit">Áp dụng</button>
+            <div class="chips chips--sm" id="price-presets"></div>
+          </form>
+          <div class="filters__group">
+            <h3>Đánh giá</h3>
+            <div class="rates" id="rates"></div>
+          </div>
+          <div class="filters__group">
+            <h3>Của riêng bạn</h3>
+            <button class="chip chip--sm" id="fav-only" type="button" aria-pressed="false">♥ Món đã thả tim <span id="fav-n"></span></button>
+          </div>
+          <button class="btn filters__clear" id="filters-clear" type="button">Xóa tất cả bộ lọc</button>
+        </div>
+      </section>
     </aside>
 
     <section class="content" aria-label="Sản phẩm">
+      <!-- Flash sale: mỗi khung giờ chẵn đổi một lượt món, đồng hồ đếm ngược tới hết khung giờ -->
+      <section class="flash" id="flash" aria-labelledby="flash-title">
+        <div class="flash__head">
+          <h2 class="flash__title" id="flash-title"><span aria-hidden="true">⚡</span> Flash sale</h2>
+          <p class="flash__timer">
+            <span class="flash__label">Kết thúc sau</span>
+            <span class="flash__clock" aria-hidden="true"><b id="flash-h">00</b>:<b id="flash-m">00</b>:<b id="flash-s">00</b></span>
+            <span class="sr-only" id="flash-sr"></span>
+          </p>
+        </div>
+        <ul class="flash__list" id="flash-list"></ul>
+      </section>
+
       <div class="toolbar">
         <span class="toolbar__label hide-sm">Sắp xếp theo</span>
         <div class="toolbar__sorts" id="sorts">
-          <button class="btn is-active" type="button" data-sort="popular">Phổ biến</button>
-          <button class="btn" type="button" data-sort="newest">Mới nhất</button>
-          <button class="btn" type="button" data-sort="sold">Bán chạy</button>
+          <button class="btn is-active" type="button" data-sort="popular" aria-pressed="true">Phổ biến</button>
+          <button class="btn" type="button" data-sort="newest" aria-pressed="false">Mới nhất</button>
+          <button class="btn" type="button" data-sort="sold" aria-pressed="false">Bán chạy</button>
         </div>
         <label class="sr-only" for="price-sort">Sắp xếp theo giá</label>
         <select class="select" id="price-sort">
@@ -41,8 +90,14 @@
         <span class="toolbar__count" id="result-count" aria-live="polite"></span>
       </div>
 
+      <!-- Các bộ lọc đang bật, bấm ✕ để bỏ từng cái -->
+      <div class="active-filters" id="active-filters" hidden>
+        <ul class="active-filters__list" id="active-list" aria-label="Bộ lọc đang bật"></ul>
+        <button class="active-filters__clear" type="button" data-unset="all">Xóa tất cả</button>
+      </div>
+
       <ul class="grid" id="grid"></ul>
-      <p class="none" id="none" hidden>Không tìm thấy món nào. Thử từ khóa khác, hoặc hỏi con mèo xem nó giấu ở đâu.</p>
+      <p class="none" id="none" hidden></p>
       <nav class="pager" id="pager" aria-label="Phân trang"></nav>
     </section>
   </main>

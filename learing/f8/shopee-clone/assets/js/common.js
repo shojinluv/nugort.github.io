@@ -1,7 +1,7 @@
 // common.js – Phần dùng chung cho mọi trang của Chợ Nugỏrt:
-// thanh đầu trang (tìm kiếm, giỏ hàng), chân trang, hộp đăng nhập/đăng ký và thông báo nhỏ.
+// thanh đầu trang (tìm kiếm có gợi ý, nút món đã thả tim, giỏ hàng), chân trang, hộp đăng nhập/đăng ký và thông báo nhỏ.
 // Mỗi trang chỉ cần gọi mountShell() một lần, rồi dùng addToCart(), toast()… khi cần.
-import { byId, money, sold, tint, discount, esc, variantsOf, stockOf } from './data.js';
+import { PRODUCTS, byId, money, sold, tint, discount, esc, plain, variantsOf, stockOf } from './data.js';
 
 export const $ = (id) => document.getElementById(id);
 
@@ -26,6 +26,9 @@ const ICONS = `
       <symbol id="i-truck" viewBox="0 0 24 24"><path d="M3 6h11v9H3zM14 9h4l3 3v3h-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="7" cy="17" r="1.8" fill="currentColor"/><circle cx="17" cy="17" r="1.8" fill="currentColor"/></symbol>
       <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.4 3 8.4 7 10 4-1.6 7-5.6 7-10V6l-7-3Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
       <symbol id="i-back" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 5h16l-6 7.5V19l-4-2v-4.5L4 5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+      <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="9.5" r="2.5" fill="currentColor"/></symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 8v4l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
     </defs>
   </svg>`;
 
@@ -49,22 +52,38 @@ const HEADER = `
         </a>
         <form class="search" id="search" role="search" action="./">
           <label class="sr-only" for="search-input">Tìm sản phẩm</label>
-          <input id="search-input" name="q" type="search" placeholder="Tìm bàn phím, hạt cho mèo, vé lên Sao Hỏa…" autocomplete="off">
+          <input id="search-input" name="q" type="search" placeholder="Tìm bàn phím, hạt cho mèo, vé lên Sao Hỏa…" autocomplete="off"
+            role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggest-list">
           <button type="submit" aria-label="Tìm"><svg aria-hidden="true"><use href="#i-search"></use></svg></button>
+          <div class="suggest" id="suggest" hidden>
+            <div class="suggest__head" id="suggest-head" hidden>
+              <span>Tìm gần đây</span>
+              <button class="suggest__clear" type="button" data-suggest-clear>Xóa lịch sử</button>
+            </div>
+            <ul class="suggest__list" id="suggest-list" role="listbox" aria-label="Gợi ý tìm kiếm"></ul>
+            <p class="suggest__none" id="suggest-none" hidden>Chưa có món nào khớp. Thử gõ ít chữ hơn, hoặc hỏi con mèo xem.</p>
+          </div>
         </form>
-        <div class="cart" id="cart">
-          <button class="cart__btn" id="cart-btn" type="button" aria-expanded="false" aria-controls="cart-panel">
-            <svg aria-hidden="true"><use href="#i-cart"></use></svg>
-            <span class="sr-only">Giỏ hàng</span>
-            <span class="cart__count" id="cart-count" hidden>0</span>
-          </button>
-          <div class="cart__panel" id="cart-panel" hidden>
-            <h2>Giỏ hàng</h2>
-            <ul class="cart__list" id="cart-list"></ul>
-            <p class="cart__empty" id="cart-empty">Giỏ còn trống trơn. Mèo nhìn bạn với ánh mắt thất vọng.</p>
-            <div class="cart__foot" id="cart-foot" hidden>
-              <span>Tổng: <b id="cart-total"></b></span>
-              <button class="btn btn--primary" id="checkout" type="button">Thanh toán</button>
+        <div class="hdr-actions">
+          <a class="hdr-like" id="like-link" href="./?fav=1">
+            <svg aria-hidden="true"><use href="#i-heart"></use></svg>
+            <span class="sr-only">Món đã thả tim</span>
+            <span class="hdr-like__count" id="like-count" hidden>0</span>
+          </a>
+          <div class="cart" id="cart">
+            <button class="cart__btn" id="cart-btn" type="button" aria-expanded="false" aria-controls="cart-panel">
+              <svg aria-hidden="true"><use href="#i-cart"></use></svg>
+              <span class="sr-only">Giỏ hàng</span>
+              <span class="cart__count" id="cart-count" hidden>0</span>
+            </button>
+            <div class="cart__panel" id="cart-panel" hidden>
+              <h2>Giỏ hàng</h2>
+              <ul class="cart__list" id="cart-list"></ul>
+              <p class="cart__empty" id="cart-empty">Giỏ còn trống trơn. Mèo nhìn bạn với ánh mắt thất vọng.</p>
+              <div class="cart__foot" id="cart-foot" hidden>
+                <span>Tổng: <b id="cart-total"></b></span>
+                <a class="btn btn--primary" id="checkout" href="checkout.html">Thanh toán</a>
+              </div>
             </div>
           </div>
         </div>
@@ -212,7 +231,9 @@ export function mountShell() {
   const q = new URLSearchParams(location.search).get('q');
   if (q) $('search-input').value = q;
   bindShell();
+  bindSearch();
   renderCart();
+  renderLikes();
 }
 
 // ---------- Thông báo nhỏ ----------
@@ -252,8 +273,20 @@ export function cartCount() {
   return Object.values(cart).reduce((n, x) => n + x.qty, 0);
 }
 
+/** Các món trong giỏ: { key, id, variant, qty, p } với p là sản phẩm trong data.js */
+export function cartItems() {
+  return Object.entries(cart).map(([key, x]) => ({ key, ...x, p: byId.get(x.id) })).filter((x) => x.p);
+}
+
+export function removeFromCart(keys) {
+  keys.forEach((k) => delete cart[k]);
+  save(CART_KEY, cart);
+  renderCart();
+}
+
+// Giỏ vẽ lại xong thì báo cho trang đang mở (trang thanh toán nghe sự kiện này để cập nhật theo)
 export function renderCart() {
-  const items = Object.entries(cart).map(([key, x]) => ({ key, ...x, p: byId.get(x.id) })).filter((x) => x.p);
+  const items = cartItems();
   const count = items.reduce((n, x) => n + x.qty, 0);
   const total = items.reduce((n, x) => n + x.qty * x.p.price, 0);
 
@@ -286,10 +319,10 @@ export function renderCart() {
   $('cart-empty').hidden = count > 0;
   $('cart-foot').hidden = count === 0;
   $('cart-total').textContent = money(total);
+  document.dispatchEvent(new CustomEvent('cart-change'));
 }
 
-function bumpBadge() {
-  const badge = $('cart-count');
+function bumpBadge(badge = $('cart-count')) {
   badge.classList.remove('is-bump');
   void badge.offsetWidth; // ép trình duyệt tính lại để hiệu ứng chạy lại từ đầu
   badge.classList.add('is-bump');
@@ -315,9 +348,11 @@ function setCartQty(key, value, focusStep) {
   save(CART_KEY, cart);
   renderCart();
   if (changed) bumpBadge();
-  // Giỏ được vẽ lại, nên đặt con trỏ bàn phím về đúng nút vừa bấm (nếu nút đó còn bấm được)
+  // Giỏ được vẽ lại, nên đặt con trỏ bàn phím về đúng nút vừa bấm (nếu nút đó còn bấm được).
+  // Trang thanh toán cũng có ô số lượng y hệt, nên chọn nút đang hiện trên màn hình (giỏ trên đầu trang có thể đang đóng)
   if (focusStep) {
-    const again = [...document.querySelectorAll('[data-cart-step]')].find((b) => b.dataset.key === key && b.dataset.cartStep === focusStep);
+    const again = [...document.querySelectorAll('[data-cart-step]')]
+      .find((b) => b.dataset.key === key && b.dataset.cartStep === focusStep && b.offsetParent !== null);
     if (again && !again.disabled) again.focus();
   }
 }
@@ -330,14 +365,29 @@ export function toggleCart(open) {
 }
 
 // ---------- Yêu thích ----------
+// Nút trái tim trên đầu trang dẫn tới ./?fav=1: trang chủ chỉ hiện các món đã thả tim
 const LIKE_KEY = 'cho-nugort-liked';
-const liked = new Set(load(LIKE_KEY, []));
+const liked = new Set([].concat(load(LIKE_KEY, [])).filter((id) => byId.has(id)));
 export const isLiked = (id) => liked.has(id);
+export const likedCount = () => liked.size;
+
+function renderLikes() {
+  const badge = $('like-count');
+  badge.textContent = liked.size > 99 ? '99+' : liked.size;
+  badge.hidden = liked.size === 0;
+}
+
 export function toggleLike(id) {
   if (liked.has(id)) liked.delete(id);
   else liked.add(id);
   save(LIKE_KEY, [...liked]);
-  return liked.has(id);
+  const on = liked.has(id);
+  // Một món có thể hiện ở vài chỗ cùng lúc (thẻ gợi ý, món vừa xem…): tim nào của món đó cũng đổi theo
+  document.querySelectorAll(`[data-like="${id}"]`).forEach((b) => b.setAttribute('aria-pressed', String(on)));
+  renderLikes();
+  if (on) bumpBadge($('like-count'));
+  document.dispatchEvent(new CustomEvent('likes-change', { detail: { id, on } }));
+  return on;
 }
 
 // ---------- Thẻ sản phẩm (trang chủ và phần "Có thể bạn cũng thích" ở trang chi tiết) ----------
@@ -420,17 +470,13 @@ function bindShell() {
     const t = e.target.closest('button, [data-close]');
     if (!t) return;
     if (t.dataset.remove) {
-      delete cart[t.dataset.remove];
-      save(CART_KEY, cart);
-      renderCart();
+      removeFromCart([t.dataset.remove]);
     } else if (t.dataset.cartStep) {
       setCartQty(t.dataset.key, cart[t.dataset.key].qty + Number(t.dataset.cartStep), t.dataset.cartStep);
     } else if (t.id === 'cart-btn') {
       toggleCart();
     } else if (t.dataset.tip) {
       toast(t.dataset.tip); // các mục ở chân trang
-    } else if (t.id === 'checkout') {
-      toast('Trang demo thôi, chưa thanh toán thật được đâu nha');
     } else if (t.dataset.auth) {
       openAuth(t.dataset.auth);
     } else if (t.id === 'auth-switch') {
@@ -463,5 +509,148 @@ function bindShell() {
     if (e.key !== 'Escape') return;
     if (!$('auth').hidden) closeAuth();
     else toggleCart(false);
+  });
+}
+
+// ---------- Gợi ý khi gõ tìm kiếm ----------
+// Ô trống: hiện vài từ vừa tìm gần đây. Đang gõ: dòng đầu là "Tìm …", bên dưới là các món khớp tên (có tô đậm chỗ khớp).
+// Dùng phím mũi tên lên xuống để chọn, Enter để mở, Esc để đóng. Từ khóa đã tìm chỉ lưu trong trình duyệt này.
+const SEARCH_KEY = 'cho-nugort-searches';
+let recent = [].concat(load(SEARCH_KEY, [])).filter((s) => typeof s === 'string' && s.trim()).slice(0, 6);
+let options = []; // mỗi dòng gợi ý: { type: 'search' | 'product' | 'recent', value }
+let activeOpt = -1;
+
+function remember(q) {
+  const text = q.trim();
+  if (!text) return;
+  recent = [text, ...recent.filter((r) => plain(r) !== plain(text))].slice(0, 6);
+  save(SEARCH_KEY, recent);
+}
+
+// Tô đậm phần khớp trong tên món. plain() bỏ dấu từng chữ một nên vị trí chữ trước và sau khi bỏ dấu vẫn trùng nhau
+function highlight(name, q) {
+  const pn = plain(name);
+  const pq = plain(q);
+  const i = pn.indexOf(pq);
+  if (!pq || i < 0 || pn.length !== name.length) return esc(name);
+  const j = i + pq.length;
+  return `${esc(name.slice(0, i))}<mark>${esc(name.slice(i, j))}</mark>${esc(name.slice(j))}`;
+}
+
+function renderSuggest() {
+  const q = $('search-input').value.trim();
+  options = [];
+  let hits = [];
+  if (!q) {
+    recent.forEach((r) => options.push({ type: 'recent', value: r }));
+  } else {
+    const pq = plain(q);
+    hits = PRODUCTS.filter((p) => plain(p.name).includes(pq)).sort((a, b) => b.sold - a.sold).slice(0, 6);
+    options.push({ type: 'search', value: q });
+    hits.forEach((p) => options.push({ type: 'product', value: p.id }));
+  }
+  $('suggest-list').innerHTML = options.map((o, i) => {
+    const attrs = `id="sg-${i}" class="suggest__opt" role="option" data-i="${i}" aria-selected="${i === activeOpt}"`;
+    if (o.type === 'recent') {
+      return `<li ${attrs}><svg class="suggest__ico" aria-hidden="true"><use href="#i-clock"></use></svg><span class="suggest__text">${esc(o.value)}</span></li>`;
+    }
+    if (o.type === 'search') {
+      return `<li ${attrs}><svg class="suggest__ico" aria-hidden="true"><use href="#i-search"></use></svg><span class="suggest__text">Tìm “<b>${esc(o.value)}</b>”</span></li>`;
+    }
+    const p = byId.get(o.value);
+    return `<li ${attrs}>
+      <span class="suggest__thumb" style="background:${tint(p.id)}" aria-hidden="true">${p.icon}</span>
+      <span class="suggest__text">${highlight(p.name, q)}</span>
+      <b class="suggest__price">${money(p.price)}</b>
+    </li>`;
+  }).join('');
+  $('suggest-head').hidden = Boolean(q) || !recent.length;
+  $('suggest-none').hidden = !q || hits.length > 0;
+}
+
+function openSuggest() {
+  renderSuggest();
+  const show = options.length > 0;
+  $('suggest').hidden = !show;
+  $('search-input').setAttribute('aria-expanded', String(show));
+}
+
+function closeSuggest() {
+  $('suggest').hidden = true;
+  activeOpt = -1;
+  $('search-input').setAttribute('aria-expanded', 'false');
+  $('search-input').removeAttribute('aria-activedescendant');
+}
+
+function paintActive() {
+  document.querySelectorAll('.suggest__opt').forEach((li) => li.setAttribute('aria-selected', String(Number(li.dataset.i) === activeOpt)));
+  const el = $(`sg-${activeOpt}`);
+  if (el) {
+    $('search-input').setAttribute('aria-activedescendant', el.id);
+    el.scrollIntoView({ block: 'nearest' });
+  } else {
+    $('search-input').removeAttribute('aria-activedescendant');
+  }
+}
+
+function pick(opt) {
+  const input = $('search-input');
+  if (opt.type === 'product') {
+    remember(input.value);
+    closeSuggest();
+    location.href = `product.html?id=${opt.value}`;
+    return;
+  }
+  // Tìm theo chữ: điền vào ô rồi gửi form. Trang chủ lọc ngay tại chỗ, trang khác thì chuyển về trang chủ với ?q=
+  input.value = opt.value;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  $('search').requestSubmit();
+}
+
+function bindSearch() {
+  const form = $('search');
+  const input = $('search-input');
+  const box = $('suggest');
+
+  input.addEventListener('focus', openSuggest);
+  input.addEventListener('click', () => { if (box.hidden) openSuggest(); });
+  input.addEventListener('input', () => {
+    activeOpt = -1;
+    openSuggest();
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (box.hidden) openSuggest();
+      if (!options.length) return;
+      e.preventDefault();
+      const n = options.length;
+      if (e.key === 'ArrowDown') activeOpt = (activeOpt + 1) % n;
+      else activeOpt = activeOpt <= 0 ? n - 1 : activeOpt - 1;
+      paintActive();
+    } else if (e.key === 'Enter' && !box.hidden && activeOpt >= 0) {
+      e.preventDefault();
+      pick(options[activeOpt]);
+    } else if (e.key === 'Escape' && !box.hidden) {
+      e.preventDefault(); // lần Esc đầu chỉ đóng hộp gợi ý, chưa xóa chữ trong ô
+      closeSuggest();
+    }
+  });
+
+  // Bấm vào gợi ý thì ô tìm kiếm vẫn giữ con trỏ (không bị mất focus rồi đóng hộp gợi ý trước khi kịp chọn)
+  box.addEventListener('pointerdown', (e) => e.preventDefault());
+  box.addEventListener('click', (e) => {
+    if (e.target.closest('[data-suggest-clear]')) {
+      recent = [];
+      save(SEARCH_KEY, recent);
+      openSuggest();
+      return;
+    }
+    const li = e.target.closest('[data-i]');
+    if (li) pick(options[Number(li.dataset.i)]);
+  });
+  form.addEventListener('focusout', (e) => { if (!form.contains(e.relatedTarget)) closeSuggest(); });
+  form.addEventListener('submit', () => {
+    remember(input.value);
+    closeSuggest();
   });
 }

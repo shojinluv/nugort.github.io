@@ -3,7 +3,7 @@
 import {
   PRODUCTS, SHOPS, byId, catName, variantsOf, stockOf, reviewsOf, money, sold, tint, discount, esc,
 } from './data.js';
-import { $, mountShell, addToCart, toggleCart, toast, isLiked, toggleLike, cardHTML, bindCardButtons } from './common.js';
+import { $, mountShell, addToCart, toast, isLiked, toggleLike, cardHTML, bindCardButtons, load, save } from './common.js';
 
 mountShell();
 bindCardButtons();
@@ -165,6 +165,14 @@ function renderProduct() {
       <ul class="grid" id="related"></ul>
     </section>
 
+    <section class="related" id="seen" aria-labelledby="seen-title" hidden>
+      <div class="related__head">
+        <h2 class="related__title" id="seen-title">Món bạn vừa xem</h2>
+        <button class="related__clear" type="button" id="seen-clear">Xóa lịch sử xem</button>
+      </div>
+      <ul class="grid" id="seen-list"></ul>
+    </section>
+
     <div class="buybar" aria-label="Mua nhanh">
       <button class="btn btn--ghost" type="button" data-buy="cart">Thêm vào giỏ</button>
       <button class="btn btn--primary" type="button" data-buy="now">Mua ngay · ${money(p.price)}</button>
@@ -294,6 +302,14 @@ function renderProduct() {
   const related = [...others.filter((x) => x.cat === p.cat), ...others.filter((x) => x.cat !== p.cat).sort((a, b) => b.sold - a.sold)].slice(0, 5);
   $('related').innerHTML = related.map(cardHTML).join('');
 
+  // ---------- Món vừa xem ----------
+  // Lưu trong trình duyệt, món mới xem đứng đầu. Trang này hiện tối đa 5 món đã xem trước đó (không tính món đang mở).
+  const SEEN_KEY = 'cho-nugort-seen';
+  const seen = [].concat(load(SEEN_KEY, [])).filter((x) => x !== p.id && byId.has(x));
+  save(SEEN_KEY, [p.id, ...seen].slice(0, 12));
+  $('seen').hidden = seen.length === 0;
+  $('seen-list').innerHTML = seen.slice(0, 5).map((x) => cardHTML(byId.get(x))).join('');
+
   // ---------- Mua hàng ----------
   const buy = (now, from) => {
     if (!variant) {
@@ -304,14 +320,13 @@ function renderProduct() {
     }
     const qty = clampQty(qtyInput.value);
     addToCart(p.id, qty, variant);
-    flyToCart(from);
     if (now) {
-      window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
-      setTimeout(() => toggleCart(true), reduceMotion ? 0 : 450);
-      toast('Đã thêm vào giỏ, bấm Thanh toán để đặt hàng (demo thôi nha)');
-    } else {
-      toast(`Đã thêm ${qty} × ${variant} vào giỏ`);
+      // Mua ngay: sang thẳng trang thanh toán, chỉ chọn sẵn đúng món này (các món khác trong giỏ vẫn còn đó)
+      location.href = `checkout.html?only=${encodeURIComponent(`${p.id}|${variant}`)}`;
+      return;
     }
+    flyToCart(from);
+    toast(`Đã thêm ${qty} × ${variant} vào giỏ`);
   };
 
   root.addEventListener('click', (e) => {
@@ -343,6 +358,11 @@ function renderProduct() {
       if (helpful.has(i)) helpful.delete(i);
       else helpful.add(i);
       renderReviews();
+    } else if (t.id === 'seen-clear') {
+      save(SEEN_KEY, [p.id]);
+      $('seen').hidden = true;
+      toast('Đã xóa lịch sử xem');
+      $('pd-like').focus(); // phần vừa xem đã ẩn đi, đưa con trỏ bàn phím về một chỗ gần đó
     }
   });
 
