@@ -1,5 +1,6 @@
 /*
-    polish.css – lớp "đánh bóng" thêm vào sau này (11/2026): bo góc và chuyển động cho mượt.
+    polish.css – lớp "đánh bóng" thêm vào sau này (11/2026): bo góc, chuyển động cho mượt,
+    và vá vài lỗi của bản gốc (màu nền, ảnh đầu trang quá cao, hộp mua vé bị menu đè).
     Tách riêng thành một file để styles.css và responsive.css gốc từ 2022 vẫn giữ nguyên.
     Muốn quay về bản gốc chỉ cần bỏ dòng <link> tới file này trong index.html.
 */
@@ -8,6 +9,31 @@
     --radius: 10px;
     --radius-sm: 6px;
     --ease: cubic-bezier(0.22, 0.8, 0.3, 1);
+    color-scheme: light; /* trang chỉ có giao diện sáng: ô nhập, thanh cuộn… cũng giữ màu sáng */
+}
+
+/* Nền trắng chữ đen ghi rõ ra. Không ghi thì máy nào để giao diện tối có thể thấy chữ đen trên nền tối */
+body {
+    background-color: #FFF;
+    color: #000;
+}
+
+/* ---------- Ảnh Chicago đầu trang ----------
+   Bản gốc cao cố định 1000px, cao hơn hầu hết màn hình nên dòng chữ "Chicago" ở đáy ảnh bị khuất.
+   Giờ ảnh cao vừa đúng một màn hình (trừ thanh menu), chữ luôn nằm trong tầm mắt. */
+#slider {
+    height: calc(100vh - var(--nav-heigh));
+    height: calc(100svh - var(--nav-heigh));
+    min-height: 420px;
+    max-height: 1000px;
+    padding-top: 0;
+}
+
+/* ---------- Bản đồ cuối trang: màn rộng không cho cao quá, cắt bớt cho vừa ---------- */
+.map-section img {
+    display: block;
+    height: clamp(240px, 40vw, 520px);
+    object-fit: cover;
 }
 
 /* Bấm menu thì cuộn mượt tới mục đó, và chừa chỗ cho thanh header cố định */
@@ -191,6 +217,30 @@ html {
 }
 
 /* ---------- Form mua vé ---------- */
+/* Nằm trên thanh menu (menu có z-index 1, bản gốc quên đặt cho hộp mua vé nên menu đè lên nền mờ) */
+.modal {
+    z-index: 10;
+}
+
+.modal-show {
+    font-size: 0.6em;
+    opacity: 0.85;
+    margin-left: 10px;
+}
+
+.modal-footer button {
+    border: none;
+    background: none;
+    font: inherit;
+    color: #00A8E8;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+}
+
+.modal-footer button:hover {
+    opacity: 0.7;
+}
+
 .modal.open {
     animation: backdropIn 0.25s ease both;
     -webkit-backdrop-filter: blur(3px);
@@ -221,6 +271,32 @@ html {
     from {
         opacity: 0;
     }
+}
+
+/* ---------- Thông báo nhỏ dưới đáy màn hình (cho các nút chưa có trang riêng) ---------- */
+.band-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    z-index: 20;
+    max-width: calc(100vw - 32px);
+    padding: 10px 18px;
+    border-radius: 999px;
+    background: #111;
+    color: #FFF;
+    font-size: 15px;
+    text-align: center;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 16px) scale(0.96);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.band-toast.is-show {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+    transition: opacity 0.35s ease, transform 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.15);
 }
 
 /* ---------- Người dùng đã bật "giảm chuyển động" thì tắt hết hiệu ứng ---------- */

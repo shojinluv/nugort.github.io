@@ -21,7 +21,7 @@
             <!-- Navigation -->
             <ul id="nav">
                 <li>
-                    <a href="#">Home</a>
+                    <a href="#slider">Home</a>
                 </li>
 
                 <li>
@@ -37,35 +37,36 @@
                 </li>
 
                 <li>
-                    <a href="#">More <i class="fas fa-caret-down"></i></a>
+                    <a href="#" aria-haspopup="true">More <i class="fas fa-caret-down" aria-hidden="true"></i></a>
                     <ul class="subnav">
+                        <!-- Chưa có trang riêng: bấm vào thì hiện một dòng thông báo nhỏ (data-tip) -->
                         <li>
-                            <a href="#">Merchandise</a>
+                            <a href="#" data-tip="Merch is still in the oven. T-shirts coming soon!">Merchandise</a>
                         </li>
 
                         <li>
-                            <a href="#">Extras</a>
+                            <a href="#" data-tip="Extras: backstage photos coming soon.">Extras</a>
                         </li>
 
                         <li>
-                            <a href="#">Media</a>
+                            <a href="#" data-tip="Media: the music video is still being edited.">Media</a>
                         </li>
                     </ul>
                 </li>
 
                 <!-- Lối về trang chủ (căn phòng nhỏ) -->
                 <li>
-                    <a href="../../../index.html" class="nav-mothership" title="Về căn phòng nhỏ">&larr; Tàu mẹ</a>
+                    <a href="../../../index.html" class="nav-mothership" title="Về căn phòng nhỏ" lang="vi">&larr; Tàu mẹ</a>
                 </li>
             </ul>
 
             <!-- Search -->
             <div class="nav-search">
-                <a href="#"><i class="fas fa-search"></i></a>
+                <a href="#" role="button" aria-label="Search" data-tip="Nothing to search yet, it's a one-page site. Just scroll down!"><i class="fas fa-search" aria-hidden="true"></i></a>
             </div>
 
             <div id="nav-bar-bar" class="nav-bar">
-                <a href="#"><i class="fa-solid fa-bars"></i></a>
+                <a href="#" role="button" aria-label="Menu" aria-controls="nav" aria-expanded="false"><i class="fa-solid fa-bars" aria-hidden="true"></i></a>
             </div>
         </div>
 
@@ -100,19 +101,20 @@
                     labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris
                     nisi ut aliquip ex ea commodo consequat.</p>
                 <div class="row band-members">
+                    <!-- alt để trống: tên thành viên đã ghi ngay phía trên ảnh -->
                     <div class="col three-cols s-one-col text-center mt-32">
                         <p class="member-name">Name</p>
-                        <img src="./assets/img/band-members/bandmember.jpg" alt="Name" class="member-avt">
+                        <img src="./assets/img/band-members/bandmember.jpg" alt="" class="member-avt">
                     </div>
 
                     <div class="col three-cols s-one-col text-center mt-32">
                         <p class="member-name">Name</p>
-                        <img src="./assets/img/band-members/bandmember.jpg" alt="Name" class="member-avt">
+                        <img src="./assets/img/band-members/bandmember.jpg" alt="" class="member-avt">
                     </div>
 
                     <div class="col three-cols s-one-col text-center mt-32">
                         <p class="member-name">Name</p>
-                        <img src="./assets/img/band-members/bandmember.jpg" alt="Name" class="member-avt">
+                        <img src="./assets/img/band-members/bandmember.jpg" alt="" class="member-avt">
                     </div>
                 </div>
             </div>
@@ -197,16 +199,16 @@
                         <form action="" class="js-contact-form">
                             <div class="row">
                                 <div class="col two-cols s-one-col">
-                                    <input type="text" name="" placeholder="Name" class="form-control" required>
+                                    <input type="text" name="name" placeholder="Name" aria-label="Name" class="form-control" required>
                                 </div>
                                 <div class="col two-cols s-one-col s-mt-8">
-                                    <input type="email" name="" placeholder="Email" class="form-control" required>
+                                    <input type="email" name="email" placeholder="Email" aria-label="Email" class="form-control" required>
                                 </div>
                             </div>
 
                             <div class="row">
                                 <div class="col one-col mt-8">
-                                    <input type="text" name="" placeholder="Message" class="form-control" required>
+                                    <input type="text" name="message" placeholder="Message" aria-label="Message" class="form-control" required>
                                 </div>
                             </div>
 
@@ -218,79 +220,111 @@
             </div>
 
             <div class="map-section">
-                <img src="./assets/img/maps/map.jpg" alt="map">
+                <img src="./assets/img/maps/map.jpg" alt="Aerial view of the city streets">
             </div>
         </div>
 
         <div id="footer">
+            <!-- Ban nhạc chưa có trang mạng xã hội nào: bấm vào thì hiện thông báo thay vì tải lại trang -->
             <div class="social-network">
-                <a href=""><i class="fa-brands fa-facebook-square"></i></a>
-                <a href=""><i class="fa-brands fa-instagram"></i></a>
-                <a href=""><i class="fa-brands fa-snapchat"></i></a>
-                <a href=""><i class="fa-brands fa-pinterest-p"></i></a>
-                <a href=""><i class="fa-brands fa-twitter"></i></a>
-                <a href=""><i class="fa-brands fa-linkedin-in"></i></a>
+                <a href="#" aria-label="Facebook" data-tip="No Facebook page yet, the band is still practicing."><i class="fa-brands fa-facebook-square" aria-hidden="true"></i></a>
+                <a href="#" aria-label="Instagram" data-tip="No Instagram yet, the band is still practicing."><i class="fa-brands fa-instagram" aria-hidden="true"></i></a>
+                <a href="#" aria-label="Snapchat" data-tip="No Snapchat yet, the band is still practicing."><i class="fa-brands fa-snapchat" aria-hidden="true"></i></a>
+                <a href="#" aria-label="Pinterest" data-tip="No Pinterest yet, the band is still practicing."><i class="fa-brands fa-pinterest-p" aria-hidden="true"></i></a>
+                <a href="#" aria-label="Twitter" data-tip="No Twitter yet, the band is still practicing."><i class="fa-brands fa-twitter" aria-hidden="true"></i></a>
+                <a href="#" aria-label="LinkedIn" data-tip="No LinkedIn yet, the band is still practicing."><i class="fa-brands fa-linkedin-in" aria-hidden="true"></i></a>
             </div>
 
             <p class="copyright mt-16">This website was made with W3schools Spaces. Make your own free website today!
             </p>
 
-            <button class="last-btn mt-16">Start now</button>
+            <button type="button" class="last-btn mt-16" data-tip="This is just a practice page, so there's nothing to start yet.">Start now</button>
         </div>
     </div>
 
     <div class="modal  js-modal">
-        <div class="modal-container js-modal-container">
+        <div class="modal-container js-modal-container" role="dialog" aria-modal="true" aria-labelledby="modal-title">
             <button type="button" class="close js-modal-close" aria-label="Close">
-                <i class="modal-heading-close fa-solid fa-xmark"></i>
+                <i class="modal-heading-close fa-solid fa-xmark" aria-hidden="true"></i>
             </button>
 
-            <header class="modal-header">
-                <i class="modal-heading-bag fa-solid fa-suitcase"></i>
-                Tickets
+            <header class="modal-header" id="modal-title">
+                <i class="modal-heading-bag fa-solid fa-suitcase" aria-hidden="true"></i>
+                Tickets <span class="modal-show js-modal-show"></span>
             </header>
 
             <div class="modal-body">
                 <label for="modal-tickets-quantity" class="modal-label">
-                    <i class="fa-solid fa-cart-shopping"></i>
+                    <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i>
                     Tickets, 15$ per person
                 </label>
                 <input id="modal-tickets-quantity" type="number" min="1" class="modal-input" placeholder="How many ?" required>
 
                 <label for="modal-tickets-email" class="modal-label">
-                    <i class="fa-solid fa-user"></i>
+                    <i class="fa-solid fa-user" aria-hidden="true"></i>
                     Send To
                 </label>
                 <input id="modal-tickets-email" type="email" class="modal-input" placeholder="Enter email" required>
 
                 <button id="buy-tickets" type="button">
-                    Pay <i class="fa-solid fa-check"></i>
+                    Pay <i class="fa-solid fa-check" aria-hidden="true"></i>
                 </button>
                 <p class="form-note js-pay-note" role="status"></p>
             </div>
 
             <div class="modal-footer">
                 <p class="modal-help">
-                    Need <a href="#">help?</a>
+                    Need <button type="button" data-tip="Pick how many tickets, add an email, then press Pay. That's all!">help?</button>
                 </p>
             </div>
         </div>
     </div>
+
+    <div class="band-toast js-toast" role="status" aria-live="polite"></div>
+
+    <script>
+        // Thông báo nhỏ dưới đáy màn hình, dùng cho các nút chưa có trang riêng (gắn data-tip="…" vào nút)
+        const toastEl = document.querySelector('.js-toast')
+        let toastTimer
+        function toast(text) {
+            toastEl.textContent = text
+            toastEl.classList.add('is-show')
+            clearTimeout(toastTimer)
+            toastTimer = setTimeout(function () { toastEl.classList.remove('is-show') }, Math.max(2600, text.length * 55))
+        }
+
+        // Nghe ở pha capture (tham số true): form mua vé chặn nổi bọt, nghe kiểu thường thì nút "help?" trong form không tới được đây
+        document.addEventListener('click', function (event) {
+            const tip = event.target.closest('[data-tip]')
+            if (!tip) return
+            event.preventDefault() // các link "#" không nhảy lên đầu trang nữa
+            toast(tip.dataset.tip)
+        }, true)
+    </script>
 
     <script>
         const buyBtns = document.querySelectorAll('.js-buy-tickets')
         const modal = document.querySelector('.modal')
         const modalClose = document.querySelector('.js-modal-close')
         const modalContainer = document.querySelector('.js-modal-container')
+        let lastBuyBtn = null
 
-        //hàm hiển thị form mua vé
-        function showBuyTickets() {
+        //hàm hiển thị form mua vé: ghi rõ đang mua vé cho show nào, đưa con trỏ vào ô số vé
+        function showBuyTickets(event) {
+            lastBuyBtn = event.currentTarget
+            const place = lastBuyBtn.closest('.place-body')
+            document.querySelector('.js-modal-show').textContent =
+                '· ' + place.querySelector('.place-body-title').textContent + ', ' + place.querySelector('.place-time').textContent
+            document.querySelector('.js-pay-note').textContent = ''
             modal.classList.add('open')
+            document.getElementById('modal-tickets-quantity').focus()
         }
 
-        //hàm ẩn form mua vé
+        //hàm ẩn form mua vé, trả con trỏ về nút "Buy Tickets" vừa bấm
         function hideBuyTickets() {
+            if (!modal.classList.contains('open')) return
             modal.classList.remove('open')
+            if (lastBuyBtn) lastBuyBtn.focus()
         }
 
         //lặp qua từng thẻ button và nghe hành vi click
@@ -303,9 +337,14 @@
 
         modal.addEventListener('click', hideBuyTickets)
 
-        //đóng form mua vé bằng phím Esc
+        //đóng form mua vé bằng phím Esc; phím Tab chỉ chạy vòng trong form khi form đang mở
         document.addEventListener('keydown', function (event) {
             if (event.key === 'Escape') hideBuyTickets()
+            if (event.key !== 'Tab' || !modal.classList.contains('open')) return
+            const items = Array.from(modalContainer.querySelectorAll('button, input'))
+            const i = items.indexOf(document.activeElement)
+            event.preventDefault()
+            items[(i + (event.shiftKey ? -1 : 1) + items.length) % items.length].focus()
         })
 
         //ngăn chặn hành vi nổi bọt (khi click vào khoảng không để đóng form và thứ k mong muốn)
@@ -336,6 +375,8 @@
         var navBar = document.getElementById('nav-bar-bar');
         var headerHeight = header.clientHeight;
 
+        var navBarLink = navBar.querySelector('a');
+
         navBar.onclick = function (event) {
             event.preventDefault();
             var isClosed = header.clientHeight === headerHeight;
@@ -344,6 +385,7 @@
             } else {
                 header.style.height = null;
             }
+            navBarLink.setAttribute('aria-expanded', String(isClosed)); // báo cho trình đọc màn hình biết menu đang mở hay đóng
         }
     </script>
 
@@ -359,6 +401,7 @@
                     event.preventDefault();
                 } else {
                     header.style.height = null;
+                    navBarLink.setAttribute('aria-expanded', 'false');
                 }
 
             }
