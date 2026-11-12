@@ -123,6 +123,7 @@ function buildShield(room, world) {
   let next = 1; // còn bao lâu nữa thì có đợt hạt tiếp theo bắn vào
   const v = new THREE.Vector3();
   world.updaters.push((t, dt) => {
+    toSun.copy(world.sunNow).negate(); // Mặt Trời trượt ra sau Trái Đất thì phía đón gió mặt trời cũng xoay theo
     const reveal = THREE.MathUtils.smoothstep(world.spaceProgress, 0.55, 0.9);
     material.uniforms.reveal.value = reveal;
     material.uniforms.time.value = world.reduceMotion ? 0 : t;
@@ -353,8 +354,16 @@ function buildSunbeam(room, world) {
   });
   room.add(decoration(new THREE.Points(dustGeo, dustMat)));
 
+  // Ngoài vũ trụ, lúc bay vào bóng Trái Đất Mặt Trời có thể xuống thấp hơn sàn: nắng không lọt qua cửa sổ được nữa.
+  // Giữ hướng tính toán luôn chếch xuống (khỏi chia cho 0), còn bụi thì mờ đi theo through
+  const dir = new THREE.Vector3();
+  const sunThrough = () => {
+    const d = world.sunNow;
+    return THREE.MathUtils.smoothstep(-d.y, 0.04, 0.2) * THREE.MathUtils.smoothstep(d.z, 0.04, 0.2);
+  };
   world.updaters.push((t) => {
-    const dir = world.sunNow;
+    dir.copy(world.sunNow);
+    dir.y = Math.min(dir.y, -0.04);
     placeBeam(dir);
     seeds.forEach((s, i) => {
       s.base.set(s.x, s.y, -5).addScaledVector(dir, s.depth * (s.y / -dir.y));
@@ -372,10 +381,11 @@ function buildSunbeam(room, world) {
   const nightColor = new THREE.Color('#8fa8ff');
   world.nightFns.push((n) => {
     const air = 1 - world.space;
+    const through = sunThrough();
     beamMat.color.lerpColors(dayColor, nightColor, n);
-    beamMat.opacity = (1 - 0.45 * n) * air;
-    beam.visible = air > 0.001;
-    dustMat.opacity = (0.9 - 0.6 * n) * (0.5 + 0.5 * air);
+    beamMat.opacity = (1 - 0.45 * n) * air * through;
+    beam.visible = air * through > 0.001;
+    dustMat.opacity = (0.9 - 0.6 * n) * (0.5 + 0.5 * air) * through;
   });
 }
 

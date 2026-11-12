@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { buildRoom, SUN_DIR, WALL_H, HATCH } from './room.js';
 import { buildFurniture } from './furniture.js';
-import { buildSpace } from './space.js';
+import { buildSpace, eclipse, eclipseSun } from './space.js';
 import { buildIsland, insideIsland, ISLAND_TOP } from './island.js';
 import { buildRealm } from './sky.js';
 import {
@@ -93,7 +93,9 @@ const DAY = { sky: C('#fff4ea'), ground: C('#d8b89a'), hemi: 2.2, sun: C('#fff0d
 const NIGHT = { sky: C('#6a72c9'), ground: C('#2b2346'), hemi: 0.45, sun: C('#a9bcff'), sunI: 1.1, fill: C('#7f8cff'), fillI: 0.18 };
 // Ngoài vũ trụ: không còn bầu trời xanh hắt sáng vào phòng, nắng trắng và gắt hơn, chỗ tối thì tối hơn
 const SPACE_DAY = { sky: C('#dfe5ff'), ground: C('#2f2a55'), hemi: 1.5, sun: C('#ffffff'), sunI: 3.8, fill: C('#cdd6ff'), fillI: 1.0 };
-const SPACE_NIGHT = { sky: C('#5c62b0'), ground: C('#15132b'), hemi: 0.4, sun: C('#9fb4ff'), sunI: 0.9, fill: C('#6f7cff'), fillI: 0.15 };
+// Trong bóng Trái Đất thì không còn nắng chiếu thẳng, chỉ còn chút ánh sáng hắt lên từ Trái Đất và ánh sao
+const SPACE_NIGHT = { sky: C('#5c62b0'), ground: C('#1c1a3a'), hemi: 0.42, sun: C('#9fb4ff'), sunI: 0, fill: C('#6f7cff'), fillI: 0.15 };
+const DUSK_SUN = C('#ff9a5a'); // Mặt Trời sát mép Trái Đất: nắng xuyên qua lớp khí quyển, ngả cam
 
 // ===== 6. Dựng căn phòng =====
 // "world" là chiếc túi chung để các file khác gửi vào:
@@ -134,6 +136,8 @@ const isNightHour = (h) => h >= 18 || h < 6;
 let nightTarget = isNightHour(hoursNow()); // mở trang buổi tối thì phòng cũng tối
 let night = nightTarget ? 1 : 0;
 let manualNight = false;
+// spaceTarget là điều người dùng muốn (đang ở ngoài vũ trụ hay không), xem phần 7b
+let spaceTarget = false;
 
 function setNight(value, manual = false) {
   if (manual) manualNight = true;
@@ -141,21 +145,31 @@ function setNight(value, manual = false) {
   world.nightOn = value; // để đồ vật biết đang chọn ngày hay đêm (ví dụ đoạn code trên màn hình máy tính)
   document.body.classList.toggle('is-night', value);
   ui.nightBtn.setAttribute('aria-pressed', String(value));
-  ui.nightBtn.querySelector('span').textContent = value ? 'Ban ngày' : 'Buổi tối';
+  nightLabel();
+}
+// Ngoài vũ trụ không có ngày đêm như dưới đất: "đêm" là lúc con tàu bay vào vùng bóng của Trái Đất
+function nightLabel() {
+  ui.nightBtn.querySelector('span').textContent = spaceTarget
+    ? (nightTarget ? 'Ra chỗ có nắng' : 'Vào bóng Trái Đất')
+    : (nightTarget ? 'Ban ngày' : 'Buổi tối');
 }
 
-// Trộn 4 bộ ánh sáng: ngày ↔ đêm (theo n) và trong nhà ↔ ngoài vũ trụ (theo world.space)
+// Trộn 4 bộ ánh sáng: ngày ↔ đêm (theo n) và trong nhà ↔ ngoài vũ trụ (theo world.space).
+// Ngoài vũ trụ thì tối theo phần Mặt Trời đã khuất sau Trái Đất (eclipse.lit), không theo n:
+// nắng vẫn chói cho tới lúc Mặt Trời chạm mép Trái Đất, rồi mới tắt
 const colorA = new THREE.Color();
 const colorB = new THREE.Color();
 function applyNight(n) {
+  updateSun(n);
   const s = world.space;
+  const sn = 1 - eclipse.lit;
   const lerp = THREE.MathUtils.lerp;
   const color = (target, key) => target.lerpColors(
     colorA.lerpColors(DAY[key], NIGHT[key], n),
-    colorB.lerpColors(SPACE_DAY[key], SPACE_NIGHT[key], n),
+    colorB.lerpColors(SPACE_DAY[key], SPACE_NIGHT[key], sn),
     s,
   );
-  const value = (key) => lerp(lerp(DAY[key], NIGHT[key], n), lerp(SPACE_DAY[key], SPACE_NIGHT[key], n), s);
+  const value = (key) => lerp(lerp(DAY[key], NIGHT[key], n), lerp(SPACE_DAY[key], SPACE_NIGHT[key], sn), s);
   color(hemi.color, 'sky');
   color(hemi.groundColor, 'ground');
   hemi.intensity = value('hemi');
@@ -163,7 +177,7 @@ function applyNight(n) {
   sun.intensity = value('sunI');
   color(fill.color, 'fill');
   fill.intensity = value('fillI');
-  updateSun(n);
+  if (s > 0.001) sun.color.lerp(DUSK_SUN, eclipse.dusk * 0.7 * s);
   // Sáng sớm và chiều tà: nắng vàng cam, trời ửng hồng cam
   const g = world.golden;
   if (g > 0.001) {
@@ -179,8 +193,10 @@ function applyNight(n) {
     hemi.color.lerp(RAIN_SKY, 0.45 * r);
   }
   tintSky(g, r);
-  world.night = n;
-  world.nightFns.forEach((fn) => fn(n));
+  // Đồ đạc (đèn bàn, đèn dây, đèn thành phố trên Trái Đất…) bật theo độ tối thật: ngoài vũ trụ là lúc nắng đã tắt
+  const dark = lerp(n, sn, s);
+  world.night = dark;
+  world.nightFns.forEach((fn) => fn(dark));
 }
 setNight(nightTarget);
 ui.nightBtn.addEventListener('click', () => setNight(!nightTarget, true));
@@ -202,6 +218,8 @@ const arcDir = (f, out) => {
 };
 const dayDir = new THREE.Vector3();
 const nightDir = new THREE.Vector3();
+// Ngoài vũ trụ, "đêm" là bay vào vùng bóng Trái Đất: Mặt Trời trượt dần về phía Trái Đất rồi khuất hẳn (xem eclipseSun)
+const spaceSunDir = new THREE.Vector3();
 function updateSun(n) {
   const h = hoursNow();
   const nightHour = isNightHour(h);
@@ -209,7 +227,8 @@ function updateSun(n) {
   arcDir(nightHour ? 0.3 : (h - 6) / 12, dayDir);
   if (nightHour) arcDir(((h - 18 + 24) % 24) / 12, nightDir);
   else nightDir.copy(dayDir);
-  world.sunNow.copy(dayDir).lerp(nightDir, n).normalize().lerp(SUN_DIR, world.space).normalize();
+  eclipseSun(SUN_DIR, n, spaceSunDir);
+  world.sunNow.copy(dayDir).lerp(nightDir, n).normalize().lerp(spaceSunDir, world.space).normalize();
   sun.position.copy(world.sunNow).multiplyScalar(-25);
   const elevation = Math.asin(-dayDir.y);
   world.golden = (1 - THREE.MathUtils.smoothstep(elevation, deg(22), deg(40))) * (1 - n) * (1 - world.space);
@@ -239,9 +258,8 @@ function setTime(h) {
 }
 
 // ===== 7b. Bay ra vũ trụ =====
-// spaceTarget là điều người dùng muốn (đang ở ngoài vũ trụ hay không).
+// spaceTarget (khai báo ở phần 7) là điều người dùng muốn (đang ở ngoài vũ trụ hay không).
 // world.spaceProgress thì chạy dần tới đó trong vòng lặp vẽ (phần 16), để mọi thứ chuyển mượt.
-let spaceTarget = false;
 const ROOM_TOP = new THREE.Vector3(0, WALL_H + 0.6, 0);
 
 function setSpace(value) {
@@ -250,6 +268,7 @@ function setSpace(value) {
   document.body.classList.toggle('is-space', value);
   ui.spaceBtn.setAttribute('aria-pressed', String(value));
   ui.spaceBtn.querySelector('span').textContent = value ? 'Hạ cánh' : 'Vũ trụ';
+  nightLabel();
   if (!value) backToRoomView();
 }
 
@@ -677,7 +696,12 @@ renderer.setAnimationLoop((now) => {
   world.space = THREE.MathUtils.smoothstep(world.spaceProgress, 0, 1);
   updateSkyBackground(world.spaceProgress);
 
-  night += (Number(nightTarget) - night) * Math.min(1, dt * 2.2);
+  // Ở dưới đất trời sáng tối chậm dần cho êm. Ngoài vũ trụ thì con tàu bay đều vào (hay ra khỏi) bóng Trái Đất,
+  // mất khoảng 4 giây để Mặt Trời trượt tới và lặn hẳn sau mép Trái Đất
+  if (spaceTarget) {
+    const shade = dt / (reduceMotion ? 0.3 : 4);
+    night = THREE.MathUtils.clamp(night + (nightTarget ? shade : -shade), 0, 1);
+  } else night += (Number(nightTarget) - night) * Math.min(1, dt * 2.2);
   applyNight(night);
   world.updaters.forEach((fn) => fn(t, dt));
   updateHover(dt);

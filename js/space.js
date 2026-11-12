@@ -58,6 +58,44 @@ AWAY.normalize();
 const DOWN = new THREE.Vector3(0, -1, 0);
 const TURN = new THREE.Quaternion().setFromUnitVectors(DOWN, AWAY);
 
+// ======================================================================
+// Bay vào bóng Trái Đất
+// ======================================================================
+// Ngoài vũ trụ không có ngày đêm như ở dưới đất. "Buổi tối" ngoài này là lúc con tàu bay vào vùng bóng của Trái Đất:
+// Mặt Trời trượt dần về phía Trái Đất, chạm mép thì lóe lên một vầng sáng rồi khuất hẳn; ra khỏi bóng thì ngược lại.
+// e chạy đều 0 → 1 theo thời gian (xem main.js). Hàm ghi hướng tia nắng lúc đó vào out, và cập nhật "eclipse":
+//  - lit:   phần nắng còn lại (1: Mặt Trời ló hẳn, 0: khuất hẳn sau Trái Đất)
+//  - flare: vầng sáng lóe lên đúng lúc Mặt Trời chạm mép Trái Đất
+//  - dusk:  Mặt Trời sát mép, nắng phải xuyên qua lớp khí quyển nên ngả cam
+const ROOM_MID = new THREE.Vector3(0, 1.5, 0);
+const TO_EARTH = EARTH_HOME.clone().sub(ROOM_MID).normalize();
+const EARTH_ANG = Math.asin(EARTH_R / EARTH_HOME.distanceTo(ROOM_MID)); // bán kính Trái Đất nhìn từ căn phòng
+const deg = THREE.MathUtils.degToRad;
+const NEAR = deg(6);  // chặng 1 dừng ở đây (cách mép Trái Đất 6°)
+const HIDE = deg(-3); // chặng 2 dừng ở đây (đã lặn sau mép 3°)
+const eclipseAxis = new THREE.Vector3();
+export const eclipse = { lit: 1, flare: 0, dusk: 0 };
+export function eclipseSun(sunDir, e, out) {
+  out.copy(sunDir).negate(); // hướng về phía Mặt Trời lúc còn ở chỗ cũ
+  eclipseAxis.crossVectors(out, TO_EARTH).normalize();
+  const start = out.angleTo(TO_EARTH) - EARTH_ANG; // lúc đầu cách mép Trái Đất bao xa
+  // Chặng 1 (e 0 → 0,6): lướt nhanh tới gần mép. Chặng 2 (0,6 → 1): trượt chậm và đều qua mép, cho kịp thấy vầng sáng.
+  // Chặng 1 nối mượt vào chặng 2 (cùng tốc độ ở chỗ nối) nên Mặt Trời không bị khựng
+  let gap;
+  if (e >= 0.6) gap = THREE.MathUtils.lerp(NEAR, HIDE, (e - 0.6) / 0.4);
+  else {
+    const u = e / 0.6;
+    const endSlope = ((HIDE - NEAR) / 0.4) * 0.6;
+    gap = (2 * u ** 3 - 3 * u ** 2 + 1) * start + (3 * u ** 2 - 2 * u ** 3) * NEAR + (u ** 3 - u ** 2) * endSlope;
+  }
+  out.copy(TO_EARTH).applyAxisAngle(eclipseAxis, -(EARTH_ANG + gap)).negate();
+  eclipse.lit = THREE.MathUtils.smoothstep(gap, deg(-1.5), deg(4));
+  // (trừ đi phần đuôi rất nhỏ, để lúc đã khuất hẳn thì không còn sót lại vệt tia mờ nào)
+  eclipse.flare = Math.max(0, (Math.exp(-(((gap - deg(0.5)) / deg(2)) ** 2)) - 0.06) / 0.94);
+  eclipse.dusk = 1 - THREE.MathUtils.smoothstep(gap, 0, deg(9));
+  return out;
+}
+
 export const newLaunchPose = () => ({ lift: 0, h: LAUNCH_H0, k: GROUND_SCALE, q: new THREE.Quaternion(), dir: DOWN.clone() });
 /**
  * Tư thế của mặt đất ở thời điểm p (= world.spaceProgress):
@@ -169,7 +207,7 @@ export function buildSpace(world) {
   const milkyWay = buildMilkyWay(stars.group); // Ngân Hà quay cùng bầu trời sao
   const earth = buildEarth(group);
   const moon = buildMoon(group);
-  const sun = buildSun(group, world.sunDir);
+  const sun = buildSun(group, world);
   const planets = buildPlanets(group, world.sunDir);
   const shootingStar = buildShootingStar(group, world);
   group.traverse(decoration); // không bấm được, không đổ bóng
@@ -198,22 +236,29 @@ export function buildSpace(world) {
       earth.clouds.scale.setScalar((1 + 0.012 / k) / 1.012);
       earth.group.position.copy(PAD).addScaledVector(dir, EARTH_R * k + h);
 
-      // Sao lấp lánh: mỗi lớp sao sáng tối lệch nhịp nhau
+      // Sao lấp lánh: mỗi lớp sao sáng tối lệch nhịp nhau.
+      // Vào bóng Trái Đất thì không còn nắng chói mắt, sao và Ngân Hà hiện rõ hơn hẳn
+      const dark = world.night;
       stars.layers.forEach((m, i) => {
-        m.opacity = sky * (0.75 + 0.25 * Math.sin(t * (0.8 + i * 0.6) + i * 2));
+        m.opacity = sky * (0.72 + 0.28 * dark) * (0.75 + 0.25 * Math.sin(t * (0.8 + i * 0.6) + i * 2));
+        m.size = m.userData.size * (1 + 0.3 * dark);
       });
       stars.group.rotation.y = t * 0.003; // cả bầu trời trôi rất chậm, như đang bay quanh quỹ đạo
-      milkyWay.material.opacity = sky;
-      milkyWay.starsMat.opacity = sky * 0.9;
-      sun.update(sky, world.night, t);
+      milkyWay.material.opacity = sky * (0.75 + 0.25 * dark);
+      milkyWay.starsMat.opacity = sky * (0.7 + 0.3 * dark);
+      sun.update(sky, t);
       planets.update(sky, t);
 
       earth.surface.rotation.y += dt * 0.012; // Trái Đất tự quay
       earth.clouds.rotation.y += dt * 0.018;  // mây trôi nhanh hơn mặt đất một chút
       earth.surfaceMat.opacity = ground;
-      earth.surfaceMat.emissiveIntensity = world.night * 1.4; // ban đêm thì đèn thành phố sáng lên
+      // Ban đêm thì đèn thành phố sáng lên. Ngoài vũ trụ thì nửa khuất nắng của Trái Đất lúc nào cũng là đêm
+      earth.shade.toSun.value.copy(world.sunNow).negate();
+      earth.shade.phase.value = world.space;
+      earth.surfaceMat.emissiveIntensity = THREE.MathUtils.lerp(world.night, 1, world.space) * 1.4;
       earth.cloudMat.opacity = ground * 0.9;
-      earth.haloMat.opacity = ground * (0.85 - 0.35 * world.night);
+      // Lúc Mặt Trời chạm mép, cả viền khí quyển rực lên một chút
+      earth.haloMat.opacity = ground * (0.85 - 0.35 * world.night + 0.5 * eclipse.flare * world.space);
       moon.material.opacity = sky;
 
       shootingStar(dt, sky);
@@ -254,6 +299,7 @@ function buildStars(group) {
       size, map: dot, vertexColors: true, sizeAttenuation: false, // size tính bằng pixel, xa gần như nhau
       transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false,
     });
+    material.userData.size = size;
     starGroup.add(new THREE.Points(geometry, material));
     return material;
   });
@@ -282,6 +328,13 @@ function buildEarth(group) {
   const cloudMat = new THREE.MeshStandardMaterial({
     map: canvasTexture(1024, 512, drawClouds), transparent: true, depthWrite: false, roughness: 1,
   });
+
+  // Mặt ngày, mặt đêm: ánh sáng chung trong cảnh (đèn "bầu trời" chiếu đều mọi phía) vốn làm Trái Đất sáng đều cả quả.
+  // Ngoài vũ trụ thì nửa quay lưng với Mặt Trời phải tối hẳn, có đường ranh ngày đêm, và đèn thành phố chỉ sáng ở nửa tối đó.
+  // shade.phase: 0 lúc còn ở mặt đất (giữ như cũ), 1 lúc đã ra ngoài vũ trụ
+  const shade = { toSun: { value: new THREE.Vector3(0, 1, 0) }, phase: { value: 0 } };
+  nightSide(surfaceMat, shade, 0.14);
+  nightSide(cloudMat, shade, 0.12);
   const clouds = new THREE.Mesh(new THREE.SphereGeometry(R * 1.012, 64, 48), cloudMat);
 
   // Quầng khí quyển: một tấm hình luôn quay mặt về camera, vẽ sẵn một vòng sáng xanh.
@@ -298,7 +351,29 @@ function buildEarth(group) {
   clouds.renderOrder = -2;
   halo.renderOrder = -1;
   earth.add(surface, clouds, halo);
-  return { group: earth, R, surface, clouds, surfaceMat, cloudMat, haloMat };
+  return { group: earth, R, surface, clouds, surfaceMat, cloudMat, haloMat, shade };
+}
+
+// Sửa shader có sẵn của MeshStandardMaterial: phía khuất nắng chỉ giữ lại "night" phần ánh sáng chung và đèn phụ
+// (để vẫn thấy lờ mờ hình Trái Đất), còn đèn thành phố (emissive) thì chỉ sáng ở phía đó
+function nightSide(material, shade, night) {
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uToSun = shade.toSun;
+    shader.uniforms.uPhase = shade.phase;
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vEarthN;')
+      .replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\nvEarthN = mat3(modelMatrix) * objectNormal;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vEarthN;\nuniform vec3 uToSun;\nuniform float uPhase;')
+      .replace('#include <aomap_fragment>', /* glsl */ `#include <aomap_fragment>
+        float earthDay = smoothstep(-0.12, 0.25, dot(normalize(vEarthN), uToSun));
+        float keep = mix(1.0, mix(${night.toFixed(2)}, 1.0, earthDay), uPhase);
+        reflectedLight.directDiffuse *= keep; // nắng thật thì vốn không tới được nửa đêm, đây là ghìm bớt đèn phụ của cảnh
+        reflectedLight.directSpecular *= keep;
+        reflectedLight.indirectDiffuse *= keep;
+        reflectedLight.indirectSpecular *= keep;
+        totalEmissiveRadiance *= mix(1.0, 1.0 - earthDay, uPhase);`);
+  };
 }
 
 // Lục địa: mỗi lục địa là một chuỗi hình tròn chồng lên nhau, nối đuôi nhau theo kiểu "bước ngẫu nhiên"
@@ -574,10 +649,11 @@ function drawMilkyWay(ctx, w, h) {
   ctx.drawImage(small, 0, 0, w, h);
 }
 
-// ---------- Mặt Trời: đặt đúng hướng nắng đang chiếu vào cửa sổ ----------
-function buildSun(group, sunDir) {
+// ---------- Mặt Trời: đặt đúng hướng nắng đang chiếu vào phòng ----------
+// Mặt Trời và vầng sáng được vẽ sau Trái Đất và có kiểm tra chiều sâu, nên lúc trượt ra sau Trái Đất thì bị che thật:
+// phần nằm trên đĩa Trái Đất biến mất, chỉ phần còn ló ra ngoài mép là sáng
+function buildSun(group, world) {
   const sun = new THREE.Group();
-  sun.position.copy(sunDir).multiplyScalar(-170); // sunDir là hướng ánh nắng đi tới, nên Mặt Trời ở phía ngược lại
   group.add(sun);
 
   const coreMat = new THREE.MeshBasicMaterial({ color: '#fffaf0', transparent: true, toneMapped: false });
@@ -595,19 +671,27 @@ function buildSun(group, sunDir) {
   };
   const glowMat = sprite(drawSunGlow, 36);
   const raysMat = sprite(drawSunRays, 64); // tia chói hình chữ thập, kiểu ảnh chụp ngoài vũ trụ
+  const rays = sun.children[1];
   core.renderOrder = -3;
   sun.add(core);
 
+  const white = new THREE.Color('#ffffff');
+  const dusk = new THREE.Color('#ffa066');
   return {
     group: sun,
-    update(s, night, t) {
-      // Bấm "Buổi tối" khi đang ở ngoài vũ trụ = căn phòng bay vào vùng bóng của Trái Đất, Mặt Trời khuất mất
-      const k = s * (1 - night);
-      sun.visible = k > 0.01;
+    update(s, t) {
+      sun.position.copy(world.sunNow).multiplyScalar(-170); // sunNow là hướng ánh nắng đi tới, nên Mặt Trời ở phía ngược lại
+      // Vào bóng Trái Đất (xem eclipseSun): Mặt Trời tắt dần theo phần bị che, chạm mép thì tia chói bùng to ra
+      const { lit, flare } = eclipse;
+      const k = s * lit;
+      const burst = s * flare;
+      sun.visible = k + burst > 0.01;
       coreMat.opacity = k;
-      glowMat.opacity = k;
-      raysMat.opacity = k * 0.55;
+      glowMat.opacity = Math.min(1, k + burst * 0.6);
+      glowMat.color.lerpColors(white, dusk, eclipse.dusk * 0.8);
+      raysMat.opacity = Math.min(1, k * 0.55 + burst * 0.9);
       raysMat.rotation = t * 0.015;
+      rays.scale.setScalar(64 * (1 + 0.7 * flare));
     },
   };
 }

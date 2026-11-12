@@ -23,7 +23,9 @@ mèo, ăng-ten nhấp nháy, ba lô dưỡng khí) và lộn nhào khi bị ch�
 khắp phòng. Vì ngoài vũ trụ là chân không nên không còn vệt nắng, chỉ còn mảng nắng rọi trên sàn.
 Ngoài vũ trụ còn có Dải Ngân Hà vắt ngang trời, Mặt Trời nằm đúng hướng nắng chiếu vào cửa sổ, và 7 hành tinh
 còn lại là những chấm sáng trôi chậm dọc hoàng đạo (rê chuột để xem tên, bấm vào để đọc một câu giới thiệu).
-Lúc này camera xoay được 360° quanh căn phòng. Bấm **Hạ cánh** để về lại như cũ.
+Ngoài vũ trụ không có ngày đêm như dưới đất, nên nút ngày đêm đổi thành **Vào bóng Trái Đất**: Mặt Trời trượt dần
+ra sau Trái Đất, lóe sáng ở mép rồi khuất hẳn; nắng tắt, chỉ còn đèn trong phòng, sao sáng rõ hơn, và nửa Trái Đất
+quay về phía mình hiện đèn thành phố. Bấm **Ra chỗ có nắng** thì ngược lại. Lúc này camera xoay được 360° quanh căn phòng. Bấm **Hạ cánh** để về lại như cũ.
 
 ## Chạy thử trên máy
 
