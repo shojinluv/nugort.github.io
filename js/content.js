@@ -64,7 +64,7 @@ export const content = {
     title: 'The Band',
     image: 'assets/thumbs/the-band.jpg',
     body: [
-      'Trang web cho một ban nhạc tưởng tượng, làm theo khóa HTML/CSS của F8.',
+      'Trang web cho Biển Mây, ban nhạc tưởng tượng của căn phòng nhỏ, làm theo khóa HTML/CSS của F8.',
       'Có ảnh bìa lớn, lịch lưu diễn, form liên hệ, và tự co giãn cho vừa màn hình điện thoại.',
     ],
     links: [{ text: 'Mở trang The Band', href: 'learing/f8/the-band/index.html' }],

@@ -1,6 +1,7 @@
 /*
     polish.css – lớp "đánh bóng" thêm vào sau này (11/2026): bo góc, chuyển động cho mượt,
-    và vá vài lỗi của bản gốc (màu nền, ảnh đầu trang quá cao, hộp mua vé bị menu đè).
+    vá vài lỗi của bản gốc (màu nền, ảnh đầu trang quá cao, hộp mua vé bị menu đè),
+    và kiểu dáng cho phần nội dung mới (ảnh đại diện emoji của ban Biển Mây, tổng tiền vé).
     Tách riêng thành một file để styles.css và responsive.css gốc từ 2022 vẫn giữ nguyên.
     Muốn quay về bản gốc chỉ cần bỏ dòng <link> tới file này trong index.html.
 */
@@ -76,10 +77,17 @@ html {
     color: #80CBC4;
 }
 
-/* Tablet hẹp: thêm một mục nên menu hơi chật, thu bớt khoảng đệm cho khỏi rớt dòng */
+/* Tablet: chữ menu tiếng Việt dài hơn bản tiếng Anh, thu nhỏ chữ và khoảng đệm cho cả hàng menu khỏi rớt dòng */
+@media (min-width: 740px) and (max-width: 1023px) {
+    #nav > li > a {
+        font-size: 16px;
+        padding: 0px 20px;
+    }
+}
+
 @media (min-width: 740px) and (max-width: 859px) {
     #nav > li > a {
-        padding: 0px 16px;
+        padding: 0px 14px;
     }
 }
 
@@ -118,9 +126,38 @@ html {
 }
 
 /* ---------- Thành viên ban nhạc ---------- */
+/* Ảnh đại diện là một ô vuông nền tối với emoji đen trắng cho hợp tông ảnh của trang; rê chuột vào thì emoji có màu */
+#content .member-role {
+    margin-top: 2px;
+    font-size: 13px;
+    opacity: 0.6;
+}
+
+#content .member-avt {
+    display: inline-grid;
+    place-items: center;
+    aspect-ratio: 1;
+    font-size: 84px;
+    line-height: 1;
+    background: radial-gradient(circle at 50% 35%, #4A4A4A, #1C1C1C 70%);
+    user-select: none;
+}
+
 #content .member-avt {
     border-radius: var(--radius);
-    transition: transform 0.35s var(--ease), box-shadow 0.35s ease;
+    filter: grayscale(1);
+    transition: transform 0.35s var(--ease), box-shadow 0.35s ease, filter 0.35s ease;
+}
+
+#content .member-avt:hover {
+    filter: none;
+}
+
+/* Điện thoại: ô ảnh to ra (60% bề ngang) nên emoji cũng to theo */
+@media (max-width: 739px) {
+    #content .member-avt {
+        font-size: 110px;
+    }
 }
 
 #content .member-avt:hover {
@@ -226,6 +263,24 @@ html {
     font-size: 0.6em;
     opacity: 0.85;
     margin-left: 10px;
+}
+
+.modal-total {
+    margin: -14px 0 16px;
+    font-size: 15px;
+    font-weight: bold;
+    color: #009688;
+}
+
+.modal-total:empty {
+    display: none;
+}
+
+.place-buy-btn:disabled {
+    cursor: default;
+    opacity: 0.5;
+    background-color: #000;
+    color: #FFF;
 }
 
 .modal-footer button {

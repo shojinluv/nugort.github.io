@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Band by Nugỏrt</title>
+    <title>Biển Mây · The Band by Nugỏrt</title>
+    <meta name="description" content="Trang web cho Biển Mây, ban nhạc tưởng tượng của căn phòng nhỏ. Bài tập dựng lại mẫu The Band của W3Schools theo khóa HTML, CSS của F8.">
     <script src="https://kit.fontawesome.com/5e3d8c980a.js" crossorigin="anonymous"></script>
     <link rel="shortcut icon" href="./assets/img/favicon.jpg" type="image/x-icon">
     <link rel="stylesheet" href="./assets/css/styles.css">
@@ -21,48 +22,48 @@
             <!-- Navigation -->
             <ul id="nav">
                 <li>
-                    <a href="#slider">Home</a>
+                    <a href="#slider">Trang chủ</a>
                 </li>
 
                 <li>
-                    <a href="#band">Band</a>
+                    <a href="#band">Ban nhạc</a>
                 </li>
 
                 <li>
-                    <a href="#tour">Tour</a>
+                    <a href="#tour">Lưu diễn</a>
                 </li>
 
                 <li>
-                    <a href="#contact">Contact</a>
+                    <a href="#contact">Liên hệ</a>
                 </li>
 
                 <li>
-                    <a href="#" aria-haspopup="true">More <i class="fas fa-caret-down" aria-hidden="true"></i></a>
+                    <a href="#" aria-haspopup="true">Thêm <i class="fas fa-caret-down" aria-hidden="true"></i></a>
                     <ul class="subnav">
                         <!-- Chưa có trang riêng: bấm vào thì hiện một dòng thông báo nhỏ (data-tip) -->
                         <li>
-                            <a href="#" data-tip="Merch is still in the oven. T-shirts coming soon!">Merchandise</a>
+                            <a href="#" data-tip="Áo thun của ban vẫn đang in, mèo đòi in hình mèo lên mặt trước.">Đồ lưu niệm</a>
                         </li>
 
                         <li>
-                            <a href="#" data-tip="Extras: backstage photos coming soon.">Extras</a>
+                            <a href="#" data-tip="Ảnh hậu trường đang được mèo duyệt, ảnh nào mèo xấu là bị loại.">Hậu trường</a>
                         </li>
 
                         <li>
-                            <a href="#" data-tip="Media: the music video is still being edited.">Media</a>
+                            <a href="#" data-tip="Video ca nhạc vẫn đang dựng, cá voi con quay hơi rung tay.">Video</a>
                         </li>
                     </ul>
                 </li>
 
                 <!-- Lối về trang chủ (căn phòng nhỏ) -->
                 <li>
-                    <a href="../../../index.html" class="nav-mothership" title="Về căn phòng nhỏ" lang="vi">&larr; Tàu mẹ</a>
+                    <a href="../../../index.html" class="nav-mothership" title="Về căn phòng nhỏ">&larr; Tàu mẹ</a>
                 </li>
             </ul>
 
             <!-- Search -->
             <div class="nav-search">
-                <a href="#" role="button" aria-label="Search" data-tip="Nothing to search yet, it's a one-page site. Just scroll down!"><i class="fas fa-search" aria-hidden="true"></i></a>
+                <a href="#" role="button" aria-label="Tìm kiếm" data-tip="Cả trang chỉ có một trang thôi, cuộn xuống là thấy hết!"><i class="fas fa-search" aria-hidden="true"></i></a>
             </div>
 
             <div id="nav-bar-bar" class="nav-bar">
@@ -77,7 +78,7 @@
                     Chicago
                 </h3>
                 <p class="slider-text-dsc">
-                    Thank you, Chicago - A night we won't forget.
+                    Cảm ơn Chicago, một đêm chẳng thể nào quên.
                 </p>
             </div>
         </div>
@@ -87,34 +88,33 @@
             <!-- About -->
             <div id="band" class="content-section">
                 <h2 class="content-section-title">
-                    The Band
+                    Biển Mây
                 </h2>
                 <p class="content-section-slogan">
-                    We love music
+                    Ban nhạc của căn phòng nhỏ
                 </p>
-                <p class="about-content-section content">We have created a fictional band website. Lorem ipsum dolor sit
-                    amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna
-                    aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea
-                    commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu
-                    fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia
-                    deserunt mollit anim id est laborum consectetur adipiscing elit, sed do eiusmod tempor incididunt ut
-                    labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris
-                    nisi ut aliquip ex ea commodo consequat.</p>
+                <p class="about-content-section content">Biển Mây là một ban nhạc tưởng tượng, tập hát trong căn phòng
+                    nhỏ trên hòn đảo bay. Ba thành viên gặp nhau vào một đêm mất điện: con mèo gõ nhịp lên nắp nồi,
+                    cá voi con dưới biển mây ngân theo một nốt trầm, còn phi hành gia thì đang ôm đàn ngồi chờ tàu.
+                    Từ đó cả ba chơi đủ thứ nhạc, từ lo-fi để code đêm khuya tới những bài ballad dài bằng một vòng
+                    quỹ đạo. Ban chưa ra album nào, nhưng hàng xóm đã thuộc lòng cả ba bài.</p>
                 <div class="row band-members">
-                    <!-- alt để trống: tên thành viên đã ghi ngay phía trên ảnh -->
                     <div class="col three-cols s-one-col text-center mt-32">
-                        <p class="member-name">Name</p>
-                        <img src="./assets/img/band-members/bandmember.jpg" alt="" class="member-avt">
+                        <p class="member-name">Mèo Sphynx</p>
+                        <p class="member-role">Trống</p>
+                        <div class="member-avt" role="img" aria-label="Mèo Sphynx">🐱</div>
                     </div>
 
                     <div class="col three-cols s-one-col text-center mt-32">
-                        <p class="member-name">Name</p>
-                        <img src="./assets/img/band-members/bandmember.jpg" alt="" class="member-avt">
+                        <p class="member-name">Phi hành gia</p>
+                        <p class="member-role">Guitar &amp; hát chính</p>
+                        <div class="member-avt" role="img" aria-label="Phi hành gia">🧑‍🚀</div>
                     </div>
 
                     <div class="col three-cols s-one-col text-center mt-32">
-                        <p class="member-name">Name</p>
-                        <img src="./assets/img/band-members/bandmember.jpg" alt="" class="member-avt">
+                        <p class="member-name">Cá voi con</p>
+                        <p class="member-role">Bass &amp; bè trầm</p>
+                        <div class="member-avt" role="img" aria-label="Cá voi con">🐋</div>
                     </div>
                 </div>
             </div>
@@ -123,48 +123,48 @@
             <div id="tour" class="tour-section">
                 <div class="content-section text-white">
                     <h2 class="content-section-title text-white">
-                        TOUR DATES
+                        Lịch lưu diễn
                     </h2>
                     <p class="content-section-slogan">
-                        Remember to book your tickets!
+                        Nhớ đặt vé sớm nha!
                     </p>
 
                     <!-- Tickets -->
                     <ul class="tickets-list">
-                        <li>September <span class="sold-out">Sold out</span></li>
-                        <li>October <span class="sold-out">Sold out</span></li>
-                        <li>November <span class="tickets-left">3</span></li>
+                        <li>Tháng 9 <span class="sold-out">Hết vé</span></li>
+                        <li>Tháng 10 <span class="sold-out">Hết vé</span></li>
+                        <li>Tháng 11 <span class="tickets-left js-tickets-left" aria-label="còn 3 vé">3</span></li>
                     </ul>
 
                     <!-- Tour places -->
                     <div class="tour-places row">
                         <div class="col three-cols s-one-col mt-16">
-                            <img src="./assets/img/tour-places/newyork.jpg" alt="New York" class="place-img">
+                            <img src="./assets/img/tour-places/newyork.jpg" alt="Các tòa nhà chọc trời ở New York" class="place-img">
                             <div class="place-body">
                                 <h3 class="place-body-title">New York</h3>
-                                <p class="place-time">Fri 27 Nov 2016</p>
-                                <p class="place-content">Praesent tincidunt sed tellus ut rutrum sed vitae justo.</p>
-                                <button class="place-buy-btn js-buy-tickets s-full-witdh">Buy Tickets</button>
+                                <p class="place-time">Thứ Sáu, 27/11/2026</p>
+                                <p class="place-content">Mở màn ở một quán nhỏ dưới tầng hầm. Mèo đòi ngồi hàng ghế đầu.</p>
+                                <button class="place-buy-btn js-buy-tickets s-full-witdh">Mua vé</button>
                             </div>
                         </div>
 
                         <div class="col three-cols s-one-col mt-16">
-                            <img src="./assets/img/tour-places/paris.jpg" alt="Paris" class="place-img">
+                            <img src="./assets/img/tour-places/paris.jpg" alt="Tháp Eiffel nhìn từ một con phố ở Paris" class="place-img">
                             <div class="place-body">
                                 <h3 class="place-body-title">Paris</h3>
-                                <p class="place-time">Sat 28 Nov 2016</p>
-                                <p class="place-content">Praesent tincidunt sed tellus ut rutrum sed vitae justo.</p>
-                                <button class="place-buy-btn js-buy-tickets s-full-witdh">Buy Tickets</button>
+                                <p class="place-time">Thứ Bảy, 28/11/2026</p>
+                                <p class="place-content">Diễn lúc hoàng hôn. Cá voi con hứa không bơi lạc xuống sông Seine.</p>
+                                <button class="place-buy-btn js-buy-tickets s-full-witdh">Mua vé</button>
                             </div>
                         </div>
 
                         <div class="col three-cols s-one-col mt-16">
-                            <img src="./assets/img/tour-places/sanfran.jpg" alt="San Francisco" class="place-img">
+                            <img src="./assets/img/tour-places/sanfran.jpg" alt="Cầu Cổng Vàng ở San Francisco" class="place-img">
                             <div class="place-body">
                                 <h3 class="place-body-title">San Francisco</h3>
-                                <p class="place-time">Sun 29 Nov 2016</p>
-                                <p class="place-content">Praesent tincidunt sed tellus ut rutrum sed vitae justo.</p>
-                                <button class="place-buy-btn js-buy-tickets s-full-witdh">Buy Tickets</button>
+                                <p class="place-time">Chủ Nhật, 29/11/2026</p>
+                                <p class="place-content">Đêm cuối của tour, chơi cạnh cầu Cổng Vàng nếu sương mù cho phép.</p>
+                                <button class="place-buy-btn js-buy-tickets s-full-witdh">Mua vé</button>
                             </div>
                         </div>
                     </div>
@@ -174,24 +174,24 @@
             <!-- Contact -->
             <div id="contact" class="content-section">
                 <h2 class="content-section-title">
-                    CONTACT
+                    Liên hệ
                 </h2>
                 <p class="content-section-slogan">
-                    Fan? Drop a note!
+                    Là fan hả? Để lại lời nhắn nè!
                 </p>
                 <div class="row contact-form">
                     <div class="col two-cols s-one-col contact-form-infor">
                         <p>
-                            <i class="fa-solid fa-location-dot"></i>
-                            Chicago, US
+                            <i class="fa-solid fa-location-dot" aria-hidden="true"></i>
+                            Căn phòng nhỏ, hòn đảo bay
                         </p>
                         <p>
-                            <i class="fa-solid fa-phone"></i>
-                            Phone: <a href="tel:+00151515">+00 151515</a>
+                            <i class="fa-solid fa-phone" aria-hidden="true"></i>
+                            Điện thoại: gọi to “meo ơi”
                         </p>
                         <p>
-                            <i class="fa-solid fa-envelope"></i>
-                            Email: <a href="mailto:mail@mail.com">mail@mail.com</a>
+                            <i class="fa-solid fa-envelope" aria-hidden="true"></i>
+                            Email: <a href="mailto:bienmay@example.com">bienmay@example.com</a>
                         </p>
                     </div>
 
@@ -199,7 +199,7 @@
                         <form action="" class="js-contact-form">
                             <div class="row">
                                 <div class="col two-cols s-one-col">
-                                    <input type="text" name="name" placeholder="Name" aria-label="Name" class="form-control" required>
+                                    <input type="text" name="name" placeholder="Tên" aria-label="Tên" class="form-control" required>
                                 </div>
                                 <div class="col two-cols s-one-col s-mt-8">
                                     <input type="email" name="email" placeholder="Email" aria-label="Email" class="form-control" required>
@@ -208,11 +208,11 @@
 
                             <div class="row">
                                 <div class="col one-col mt-8">
-                                    <input type="text" name="message" placeholder="Message" aria-label="Message" class="form-control" required>
+                                    <input type="text" name="message" placeholder="Lời nhắn" aria-label="Lời nhắn" class="form-control" required>
                                 </div>
                             </div>
 
-                            <input type="submit" value="SEND" class="contact-form-submit s-full-witdh mt-16">
+                            <input type="submit" value="GỬI" class="contact-form-submit s-full-witdh mt-16">
                             <p class="form-note js-contact-note" role="status"></p>
                         </form>
                     </div>
@@ -220,61 +220,64 @@
             </div>
 
             <div class="map-section">
-                <img src="./assets/img/maps/map.jpg" alt="Aerial view of the city streets">
+                <img src="./assets/img/maps/map.jpg" alt="Đường phố nhìn từ trên cao">
             </div>
         </div>
 
         <div id="footer">
             <!-- Ban nhạc chưa có trang mạng xã hội nào: bấm vào thì hiện thông báo thay vì tải lại trang -->
             <div class="social-network">
-                <a href="#" aria-label="Facebook" data-tip="No Facebook page yet, the band is still practicing."><i class="fa-brands fa-facebook-square" aria-hidden="true"></i></a>
-                <a href="#" aria-label="Instagram" data-tip="No Instagram yet, the band is still practicing."><i class="fa-brands fa-instagram" aria-hidden="true"></i></a>
-                <a href="#" aria-label="Snapchat" data-tip="No Snapchat yet, the band is still practicing."><i class="fa-brands fa-snapchat" aria-hidden="true"></i></a>
-                <a href="#" aria-label="Pinterest" data-tip="No Pinterest yet, the band is still practicing."><i class="fa-brands fa-pinterest-p" aria-hidden="true"></i></a>
-                <a href="#" aria-label="Twitter" data-tip="No Twitter yet, the band is still practicing."><i class="fa-brands fa-twitter" aria-hidden="true"></i></a>
-                <a href="#" aria-label="LinkedIn" data-tip="No LinkedIn yet, the band is still practicing."><i class="fa-brands fa-linkedin-in" aria-hidden="true"></i></a>
+                <a href="#" aria-label="Facebook" data-tip="Ban chưa có Facebook, còn đang mải tập."><i class="fa-brands fa-facebook-square" aria-hidden="true"></i></a>
+                <a href="#" aria-label="Instagram" data-tip="Ban chưa có Instagram, mèo chưa ưng tấm ảnh nào."><i class="fa-brands fa-instagram" aria-hidden="true"></i></a>
+                <a href="#" aria-label="Snapchat" data-tip="Ban chưa có Snapchat, còn đang mải tập."><i class="fa-brands fa-snapchat" aria-hidden="true"></i></a>
+                <a href="#" aria-label="Pinterest" data-tip="Ban chưa có Pinterest, còn đang mải tập."><i class="fa-brands fa-pinterest-p" aria-hidden="true"></i></a>
+                <a href="#" aria-label="Twitter" data-tip="Ban chưa có Twitter, cá voi con gõ phím chậm lắm."><i class="fa-brands fa-twitter" aria-hidden="true"></i></a>
+                <a href="#" aria-label="LinkedIn" data-tip="Ban chưa có LinkedIn, phi hành gia vẫn đang viết CV."><i class="fa-brands fa-linkedin-in" aria-hidden="true"></i></a>
             </div>
 
-            <p class="copyright mt-16">This website was made with W3schools Spaces. Make your own free website today!
+            <p class="copyright mt-16">Bài tập dựng lại mẫu The Band của W3Schools, học theo khóa HTML, CSS của F8 năm 2022.
+                Ban nhạc, thành viên và lịch diễn đều là bịa.
             </p>
 
-            <button type="button" class="last-btn mt-16" data-tip="This is just a practice page, so there's nothing to start yet.">Start now</button>
+            <button type="button" class="last-btn mt-16 js-to-top">Lên đầu trang</button>
         </div>
     </div>
 
     <div class="modal  js-modal">
         <div class="modal-container js-modal-container" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-            <button type="button" class="close js-modal-close" aria-label="Close">
+            <button type="button" class="close js-modal-close" aria-label="Đóng">
                 <i class="modal-heading-close fa-solid fa-xmark" aria-hidden="true"></i>
             </button>
 
             <header class="modal-header" id="modal-title">
                 <i class="modal-heading-bag fa-solid fa-suitcase" aria-hidden="true"></i>
-                Tickets <span class="modal-show js-modal-show"></span>
+                Vé <span class="modal-show js-modal-show"></span>
             </header>
 
             <div class="modal-body">
                 <label for="modal-tickets-quantity" class="modal-label">
                     <i class="fa-solid fa-cart-shopping" aria-hidden="true"></i>
-                    Tickets, 15$ per person
+                    Số vé, 15$ một người
                 </label>
-                <input id="modal-tickets-quantity" type="number" min="1" class="modal-input" placeholder="How many ?" required>
+                <input id="modal-tickets-quantity" type="number" min="1" max="3" class="modal-input" placeholder="Mấy vé?" required>
 
                 <label for="modal-tickets-email" class="modal-label">
                     <i class="fa-solid fa-user" aria-hidden="true"></i>
-                    Send To
+                    Gửi vé tới
                 </label>
-                <input id="modal-tickets-email" type="email" class="modal-input" placeholder="Enter email" required>
+                <input id="modal-tickets-email" type="email" class="modal-input" placeholder="Nhập email" required>
+
+                <p class="modal-total js-modal-total" aria-live="polite"></p>
 
                 <button id="buy-tickets" type="button">
-                    Pay <i class="fa-solid fa-check" aria-hidden="true"></i>
+                    Thanh toán <i class="fa-solid fa-check" aria-hidden="true"></i>
                 </button>
                 <p class="form-note js-pay-note" role="status"></p>
             </div>
 
             <div class="modal-footer">
                 <p class="modal-help">
-                    Need <button type="button" data-tip="Pick how many tickets, add an email, then press Pay. That's all!">help?</button>
+                    Cần <button type="button" data-tip="Chọn số vé, điền email rồi bấm Thanh toán. Vậy thôi!">trợ giúp?</button>
                 </p>
             </div>
         </div>
@@ -293,13 +296,18 @@
             toastTimer = setTimeout(function () { toastEl.classList.remove('is-show') }, Math.max(2600, text.length * 55))
         }
 
-        // Nghe ở pha capture (tham số true): form mua vé chặn nổi bọt, nghe kiểu thường thì nút "help?" trong form không tới được đây
+        // Nghe ở pha capture (tham số true): form mua vé chặn nổi bọt, nghe kiểu thường thì nút "trợ giúp?" trong form không tới được đây
         document.addEventListener('click', function (event) {
             const tip = event.target.closest('[data-tip]')
             if (!tip) return
             event.preventDefault() // các link "#" không nhảy lên đầu trang nữa
             toast(tip.dataset.tip)
         }, true)
+
+        // Nút cuối trang: cuộn mượt về đầu trang
+        document.querySelector('.js-to-top').addEventListener('click', function () {
+            window.scrollTo({ top: 0 })
+        })
     </script>
 
     <script>
@@ -307,7 +315,38 @@
         const modal = document.querySelector('.modal')
         const modalClose = document.querySelector('.js-modal-close')
         const modalContainer = document.querySelector('.js-modal-container')
+        const quantityInput = document.getElementById('modal-tickets-quantity')
+        const emailInput = document.getElementById('modal-tickets-email')
+        const totalNote = document.querySelector('.js-modal-total')
+        const payNote = document.querySelector('.js-pay-note')
+        const leftBadge = document.querySelector('.js-tickets-left')
+        const PRICE = 15
+        let ticketsLeft = 3 // cả ba show đều trong tháng 11, dùng chung 3 vé còn lại
         let lastBuyBtn = null
+
+        // Tổng tiền hiện ngay khi gõ số vé
+        function updateTotal() {
+            const n = Number(quantityInput.value)
+            totalNote.textContent = n >= 1 ? 'Tổng: ' + n * PRICE + '$' : ''
+        }
+        quantityInput.addEventListener('input', updateTotal)
+
+        // Hết vé thì đổi nhãn tháng 11 và khóa hết nút "Mua vé"
+        function renderTicketsLeft() {
+            if (ticketsLeft > 0) {
+                leftBadge.textContent = ticketsLeft
+                leftBadge.setAttribute('aria-label', 'còn ' + ticketsLeft + ' vé')
+                quantityInput.max = ticketsLeft
+                return
+            }
+            leftBadge.textContent = 'Hết vé'
+            leftBadge.removeAttribute('aria-label')
+            leftBadge.classList.replace('tickets-left', 'sold-out')
+            for (const buyBtn of buyBtns) {
+                buyBtn.disabled = true
+                buyBtn.textContent = 'Hết vé'
+            }
+        }
 
         //hàm hiển thị form mua vé: ghi rõ đang mua vé cho show nào, đưa con trỏ vào ô số vé
         function showBuyTickets(event) {
@@ -315,16 +354,18 @@
             const place = lastBuyBtn.closest('.place-body')
             document.querySelector('.js-modal-show').textContent =
                 '· ' + place.querySelector('.place-body-title').textContent + ', ' + place.querySelector('.place-time').textContent
-            document.querySelector('.js-pay-note').textContent = ''
+            payNote.textContent = ''
+            updateTotal()
             modal.classList.add('open')
-            document.getElementById('modal-tickets-quantity').focus()
+            quantityInput.focus()
         }
 
-        //hàm ẩn form mua vé, trả con trỏ về nút "Buy Tickets" vừa bấm
+        //hàm ẩn form mua vé, trả con trỏ về nút "Mua vé" vừa bấm (nút đã khóa vì hết vé thì về ô "Hết vé" của tháng 11)
         function hideBuyTickets() {
             if (!modal.classList.contains('open')) return
             modal.classList.remove('open')
-            if (lastBuyBtn) lastBuyBtn.focus()
+            if (lastBuyBtn && !lastBuyBtn.disabled) lastBuyBtn.focus()
+            else document.getElementById('tour').scrollIntoView({ block: 'start' })
         }
 
         //lặp qua từng thẻ button và nghe hành vi click
@@ -341,7 +382,7 @@
         document.addEventListener('keydown', function (event) {
             if (event.key === 'Escape') hideBuyTickets()
             if (event.key !== 'Tab' || !modal.classList.contains('open')) return
-            const items = Array.from(modalContainer.querySelectorAll('button, input'))
+            const items = Array.from(modalContainer.querySelectorAll('button:not(:disabled), input'))
             const i = items.indexOf(document.activeElement)
             event.preventDefault()
             items[(i + (event.shiftKey ? -1 : 1) + items.length) % items.length].focus()
@@ -352,20 +393,25 @@
             event.stopPropagation()
         })
 
-        //bấm Pay: kiểm tra số vé và email rồi báo lại (trang demo nên không thanh toán thật)
-        const payNote = document.querySelector('.js-pay-note')
+        //bấm Thanh toán: kiểm tra số vé (không quá số vé còn lại) và email rồi báo lại (trang demo nên không thanh toán thật)
         document.getElementById('buy-tickets').addEventListener('click', function () {
-            const quantity = document.getElementById('modal-tickets-quantity')
-            const email = document.getElementById('modal-tickets-email')
-            if (!quantity.reportValidity() || !email.reportValidity()) return
-            payNote.textContent = 'Thanks! ' + quantity.value + ' ticket(s) reserved for ' + email.value + '. (Demo only, nothing was charged.)'
+            if (ticketsLeft <= 0) return
+            quantityInput.setCustomValidity(Number(quantityInput.value) > ticketsLeft ? 'Chỉ còn ' + ticketsLeft + ' vé thôi nha' : '')
+            if (!quantityInput.reportValidity() || !emailInput.reportValidity()) return
+            const n = Number(quantityInput.value)
+            ticketsLeft -= n
+            payNote.textContent = 'Đã giữ ' + n + ' vé (' + n * PRICE + '$) và gửi tới ' + emailInput.value + '. Bản demo thôi, không trừ tiền đâu.'
+            quantityInput.value = ''
+            updateTotal()
+            renderTicketsLeft()
         })
+        quantityInput.addEventListener('input', function () { quantityInput.setCustomValidity('') })
 
-        //bấm SEND ở form liên hệ: không tải lại trang, chỉ báo đã nhận
+        //bấm GỬI ở form liên hệ: không tải lại trang, chỉ báo đã nhận
         document.querySelector('.js-contact-form').addEventListener('submit', function (event) {
             event.preventDefault()
             this.reset()
-            document.querySelector('.js-contact-note').textContent = 'Thanks for your note! (Demo only, nothing was sent.)'
+            document.querySelector('.js-contact-note').textContent = 'Cảm ơn bạn! Bản demo thôi, lời nhắn chưa gửi đi đâu cả.'
         })
     </script>
 
@@ -374,7 +420,6 @@
         var header = document.getElementById('header');
         var navBar = document.getElementById('nav-bar-bar');
         var headerHeight = header.clientHeight;
-
         var navBarLink = navBar.querySelector('a');
 
         navBar.onclick = function (event) {
