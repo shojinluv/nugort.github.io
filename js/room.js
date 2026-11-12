@@ -29,6 +29,113 @@ export function buildRoom(world) {
   buildAirlock(room, world);
   buildStickyNotes(room);
   buildClock(room, world);
+  buildShield(room, world);
+}
+
+// ---------- Khiên bong bóng bọc quanh tàu khi ra ngoài vũ trụ ----------
+// Trên mặt đất đã có từ trường và bầu khí quyển che chắn. Ra tới vũ trụ, gió mặt trời và tia vũ trụ bắn hạt
+// tích điện liên tục, nên tàu bật một lớp khiên: giữa trong veo, viền ánh cầu vồng như bong bóng xà phòng,
+// lưới tổ ong mờ, phía hướng về Mặt Trời dày hơn và thỉnh thoảng lóe gợn sóng khi chặn một đợt hạt.
+// Lúc cất cánh khiên mọc từ dưới đáy lên khép thành vòm, lúc hạ cánh thì rút dần xuống.
+function buildShield(room, world) {
+  const R = 9.2; // bọc trọn căn phòng, dàn pin đang bung và động cơ dưới gầm
+  const toSun = SUN_DIR.clone().negate();
+  const impacts = Array.from({ length: 4 }, () => new THREE.Vector4(0, 1, 0, 99)); // xyz: chỗ bị bắn trúng, w: đã bao lâu
+  const material = new THREE.ShaderMaterial({
+    uniforms: {
+      reveal: { value: 0 }, // 0: chưa bật, 1: khiên đã khép kín
+      time: { value: 0 },
+      toSun: { value: toSun },
+      impacts: { value: impacts },
+    },
+    vertexShader: /* glsl */ `
+      varying vec3 vNormal;
+      varying vec3 vWorld;
+      varying vec3 vDir; // hướng từ tâm khiên ra điểm này
+      void main() {
+        vDir = normalize(position);
+        vNormal = normalize(mat3(modelMatrix) * normal);
+        vec4 w = modelMatrix * vec4(position, 1.0);
+        vWorld = w.xyz;
+        gl_Position = projectionMatrix * viewMatrix * w;
+      }`,
+    fragmentShader: /* glsl */ `
+      uniform float reveal;
+      uniform float time;
+      uniform vec3 toSun;
+      uniform vec4 impacts[4];
+      varying vec3 vNormal;
+      varying vec3 vWorld;
+      varying vec3 vDir;
+      // Khoảng cách tới cạnh ô lục giác gần nhất (0 là nằm ngay trên cạnh)
+      float hexEdge(vec2 p) {
+        vec2 r = vec2(1.0, 1.7320508);
+        vec2 h = r * 0.5;
+        vec2 a = mod(p, r) - h;
+        vec2 b = mod(p - h, r) - h;
+        vec2 g = dot(a, a) < dot(b, b) ? a : b;
+        g = abs(g);
+        return 0.5 - max(dot(g, normalize(r)), g.x);
+      }
+      void main() {
+        // Khiên mọc từ đáy lên: chỉ hiện phần thấp hơn "mép đang mọc", mép đó sáng rực
+        float h = vDir.y * 0.5 + 0.5;
+        float front = reveal * 1.2 - 0.1;
+        float inside = smoothstep(front + 0.02, front - 0.02, h);
+        float edge = smoothstep(0.07, 0.0, abs(h - front)) * step(reveal, 0.999);
+
+        // Viền sáng: chỗ nhìn xiên qua lớp khiên thì dày, nhìn thẳng thì trong veo (ở trong khiên nhìn ra vẫn rõ)
+        vec3 view = normalize(cameraPosition - vWorld);
+        float f = 1.0 - abs(dot(normalize(vNormal), view));
+        float rim = pow(f, 3.0);
+
+        // Lưới tổ ong: trải theo kinh độ, vĩ độ trên mặt cầu (24 ô một vòng nên không bị đứt ở chỗ nối)
+        vec2 p = vec2(atan(vDir.z, vDir.x) / 6.2831853 * 24.0, asin(clamp(vDir.y, -1.0, 1.0)) / 3.1415927 * 14.0);
+        float line = 1.0 - smoothstep(0.0, 0.045, hexEdge(p));
+        float sunSide = max(0.0, dot(vDir, toSun)); // phía đón gió mặt trời
+
+        // Gợn sóng lan ra từ những chỗ vừa chặn được hạt bức xạ
+        float ring = 0.0;
+        float hit = 0.0;
+        for (int i = 0; i < 4; i++) {
+          float age = impacts[i].w;
+          float d = acos(clamp(dot(vDir, impacts[i].xyz), -1.0, 1.0));
+          float fade = exp(-age * 2.2);
+          ring += smoothstep(0.06, 0.0, abs(d - age * 0.55)) * fade;
+          hit += exp(-d * 7.0) * exp(-age * 3.0);
+        }
+
+        // Màu ánh cầu vồng của màng xà phòng: đổi theo góc nhìn, pha với xanh lơ của khiên
+        vec3 film = 0.5 + 0.5 * cos(6.2831853 * (vec3(0.0, 0.33, 0.67) + f * 1.3 + time * 0.02));
+        vec3 color = mix(vec3(0.45, 0.85, 1.0), film, 0.55);
+        float a = rim * 0.8 + line * (0.04 + 0.13 * sunSide + 0.9 * hit) + ring * 0.7 + edge * 0.9;
+        gl_FragColor = vec4(color, a * inside);
+      }`,
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+  });
+  const shield = decoration(at(new THREE.Mesh(new THREE.SphereGeometry(R, 72, 48), material), -0.15, 2.6, -0.15));
+  shield.renderOrder = 3;
+  room.add(shield);
+
+  let next = 1; // còn bao lâu nữa thì có đợt hạt tiếp theo bắn vào
+  const v = new THREE.Vector3();
+  world.updaters.push((t, dt) => {
+    const reveal = THREE.MathUtils.smoothstep(world.spaceProgress, 0.55, 0.9);
+    material.uniforms.reveal.value = reveal;
+    material.uniforms.time.value = world.reduceMotion ? 0 : t;
+    shield.visible = reveal > 0.001;
+    impacts.forEach((p) => { p.w += dt; });
+    if (reveal < 0.999 || world.reduceMotion || (next -= dt) > 0) return;
+    // Hạt bức xạ đến từ phía Mặt Trời: chọn một chỗ ngẫu nhiên trên nửa khiên đón nắng
+    next = 0.6 + Math.random() * 1.4;
+    do v.randomDirection().multiplyScalar(0.8).add(toSun).normalize();
+    while (v.dot(toSun) < 0.2);
+    const oldest = impacts.reduce((a, b) => (b.w > a.w ? b : a));
+    oldest.set(v.x, v.y, v.z, 0);
+  });
 }
 
 // ---------- Sàn gỗ ----------
