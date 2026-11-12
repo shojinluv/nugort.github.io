@@ -841,7 +841,7 @@ function buildSolarPanels(room, world) {
     for (const top of [5.3, 3.75, 2.2]) {
       const hinge = at(new THREE.Group(), x, top, -5.34); // bản lề ở mép trên, sát mặt ngoài tường
       hinge.add(at(box(w, H, 0.06, frameMat, 0.02), 0, -H / 2, 0)); // khung nhôm
-      hinge.add(at(new THREE.Mesh(new THREE.PlaneGeometry(w - 0.1, H - 0.1), cellMat), 0, -H / 2, -0.032, 0, Math.PI, 0)); // mặt pin quay ra ngoài
+      hinge.add(at(new THREE.Mesh(new THREE.PlaneGeometry(w - 0.1, H - 0.1), cellMat), 0, -H / 2, -0.042, 0, Math.PI, 0)); // mặt pin quay ra ngoài, cách khung 1,2cm cho khỏi nhấp nháy
       array.add(hinge);
       hinges.push(hinge);
     }
@@ -1076,7 +1076,7 @@ function buildAirlock(room, world) {
     door.add(at(plate(1.7, 3.6, 0.14, 0.05, HATCH.y - 1.9, metal), 0, 1.9, 0));              // khung cửa
     door.add(at(plate(1.3, 3.1, 0.1, 0.08, HATCH.y - 1.85, mat('#eef1f7')), 0, 1.85, 0.1));  // cánh cửa
     door.add(at(box(1.28, 0.08, 0.02, dark, 0), 0, 1.25, 0.203));        // gân ngang (ngắn hơn cánh cửa 1cm để hai đầu không trùng mép cánh cửa)
-    door.add(at(new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.3), stripeMat), 0, 0.33, 0.143)); // vạch cảnh báo ở ngưỡng cửa
+    door.add(at(new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.3), stripeMat), 0, 0.33, 0.152)); // vạch cảnh báo ở ngưỡng cửa
     door.add(decoration(at(new THREE.Mesh(new THREE.CircleGeometry(HATCH.r, 32), glass), 0, HATCH.y, 0.17))); // kính không đổ bóng
     door.add(at(new THREE.Mesh(new THREE.TorusGeometry(0.39, 0.055, 12, 40), coral), 0, HATCH.y, 0.205));
 
@@ -1094,8 +1094,8 @@ function buildAirlock(room, world) {
     for (const x of [-0.29, 0.29]) door.add(at(cylinder(0.018, 0.018, 0.02, metal, 8), x, 3.86, 0.065, Math.PI / 2)); // đinh vít
     if (outside) {
       door.add(at(box(0.36, 0.52, 0.06, dark, 0.025), -1.65, 1.6, 0.03));   // vỏ ô quét chân mèo
-      door.add(at(new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.45), keyMat), -1.65, 1.6, 0.0605));
-      scanLine = decoration(at(new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.01), scanLineMat), -1.65, 1.656, 0.063));
+      door.add(at(new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.45), keyMat), -1.65, 1.6, 0.068)); // mặt kính cách vỏ 8mm
+      scanLine = decoration(at(new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.01), scanLineMat), -1.65, 1.656, 0.076));
       door.add(scanLine);
       door.add(at(cylinder(0.035, 0.035, 1.5, metal, 10), -1.1, 1.75, 0.16)); // tay vịn
       door.add(at(box(0.07, 0.07, 0.16, metal, 0.01), -1.1, 2.45, 0.08));
@@ -1146,7 +1146,7 @@ function buildAirlock(room, world) {
     ctx.fillText('TÀU VŨ TRỤ · CĂN PHÒNG NHỎ', 176, 196);
   });
   const nameMat = new THREE.MeshStandardMaterial({ map: name, transparent: true, roughness: 0.8 });
-  out.add(decoration(at(new THREE.Mesh(new THREE.PlaneGeometry(5.2, 1.3), nameMat), -1.2, 3.9, 0.006)));
+  out.add(decoration(at(new THREE.Mesh(new THREE.PlaneGeometry(5.2, 1.3), nameMat), -1.2, 3.9, 0.015)));
 
   out.traverse((o) => { o.userData.noPick = true; });
 
@@ -1202,7 +1202,8 @@ function buildStickyNotes(room) {
       });
     });
     const note = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.42), new THREE.MeshStandardMaterial({ map: texture, roughness: 0.9 }));
-    room.add(at(note, n.x, n.y, -4.97, 0, 0, n.tilt));
+    // Ba tờ giấy chồng mép lên nhau: mỗi tờ cách tờ trước 6mm, nằm cùng một mặt phẳng thì chỗ chồng bị nhấp nháy
+    room.add(at(note, n.x, n.y, -4.97 + POEM_NOTES.indexOf(n) * 0.006, 0, 0, n.tilt));
   }
 }
 

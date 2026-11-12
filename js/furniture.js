@@ -54,11 +54,11 @@ function buildComputer(world) {
   const screenTex = canvasTexture(640, 380, (ctx, w, h) => drawCode(ctx, w, h, false, false));
   const screenMat = new THREE.MeshBasicMaterial({ map: screenTex, toneMapped: false });
   const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.48, 0.88), screenMat);
-  g.add(at(screen, 0, 0.85, 0.042));
+  g.add(at(screen, 0, 0.85, 0.048)); // cách mặt vỏ màn hình 8mm: dán sát hơn thì nhìn xa hình bị nhấp nháy
   // Logo phát sáng sau lưng màn hình (chỉ thấy khi ra vũ trụ rồi xoay camera ra sau tường):
   // quả táo há miệng kiểu Pac-Man đang đuổi theo mấy hạt đậu
   const logoMat = new THREE.MeshBasicMaterial({ map: canvasTexture(256, 256, drawAppleMan), transparent: true, toneMapped: false });
-  g.add(at(new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.5), logoMat), 0, 0.87, -0.042, 0, Math.PI, 0));
+  g.add(at(new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.5), logoMat), 0, 0.87, -0.048, 0, Math.PI, 0));
 
   let shown = 'false,false';
   world.updaters.push(() => {
