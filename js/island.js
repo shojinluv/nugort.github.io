@@ -72,6 +72,7 @@ export function buildIsland(world) {
   world.scene.add(island);
 
   buildGround(island);
+  buildVines(island);
   buildTrees(island);
   buildFlowers(island);
   const glowShrooms = buildMushrooms(island);
@@ -133,7 +134,9 @@ function buildGround(island) {
   island.add(slab(0.95, 0.55, -1.2, '#8f6040', 0));   // lớp đất sẫm hơn
 
   // Chân đảo: một khối đá nhọn dần xuống dưới, mặt vát góc cạnh như đá thật
-  const profile = []; // đi từ mũi nhọn dưới đáy lên trên, để mặt ngoài quay ra ngoài
+  // Đi từ mũi nhọn dưới đáy lên trên, để mặt ngoài quay ra ngoài.
+  // Điểm đầu tiên nằm ngay trên trục: khép kín mũi đá, không chừa lỗ nhỏ nhìn xuyên lên trên.
+  const profile = [new THREE.Vector2(0, ROCK_TOP - ROCK_DEPTH - 0.3)];
   for (let i = 10; i >= 0; i--) {
     const f = i / 10;
     profile.push(new THREE.Vector2(rockRadius(f), ROCK_TOP - f * ROCK_DEPTH));
@@ -156,18 +159,196 @@ function buildGround(island) {
   const rockMat = new THREE.MeshStandardMaterial({ color: '#9b8577', roughness: 0.95, flatShading: true });
   island.add(new THREE.Mesh(rockGeo, rockMat));
 
-  // Rễ cây thòng xuống từ mép đất
-  const rootMat = mat('#7a5236');
-  for (let i = 0; i < 9; i++) {
-    const a = 0.3 + i * 0.68 + between(-0.15, 0.15);
-    const r = edge(a) * 0.93;
-    const [x, z] = polar(a, r);
-    const len = between(1.2, 2.6);
-    const pts = [0, 0.35, 0.7, 1].map((f) => new THREE.Vector3(
-      x * (1 - 0.05 * f) + Math.sin(f * 4 + i) * 0.15, -1.1 - f * len, z * (1 - 0.05 * f) + Math.cos(f * 3 + i) * 0.15,
-    ));
-    island.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 10, 0.05 - i * 0.002, 5), rootMat));
+  buildRoots(island, rockGeo);
+}
+
+// Ống tròn chạy theo các điểm, to r0 ở đầu rồi thuôn dần còn r1 ở cuối (như rễ cây, dây leo)
+function taperedTube(points, r0, r1, radial = 6) {
+  const curve = new THREE.CatmullRomCurve3(points);
+  const segs = Math.max(8, points.length * 3);
+  const geo = new THREE.TubeGeometry(curve, segs, 1, radial, false); // dựng ống bán kính 1 rồi co lại từng khúc
+  const pos = geo.attributes.position;
+  const P = new THREE.Vector3();
+  const v = new THREE.Vector3();
+  for (let i = 0; i <= segs; i++) {
+    const t = i / segs;
+    curve.getPointAt(t, P);
+    const r = r1 + (r0 - r1) * (1 - t) ** 1.1;
+    for (let j = 0; j <= radial; j++) {
+      const k = i * (radial + 1) + j;
+      v.fromBufferAttribute(pos, k).sub(P).multiplyScalar(r).add(P);
+      pos.setXYZ(k, v.x, v.y, v.z);
+    }
   }
+  return geo;
+}
+
+// Gộp nhiều ống thành một hình duy nhất, để cả bộ rễ chỉ tốn một lần vẽ
+function mergeTubes(geos) {
+  let vertices = 0;
+  let indices = 0;
+  for (const g of geos) {
+    vertices += g.attributes.position.count;
+    indices += g.index.count;
+  }
+  const position = new Float32Array(vertices * 3);
+  const normal = new Float32Array(vertices * 3);
+  const index = new Uint32Array(indices);
+  let v = 0;
+  let k = 0;
+  for (const g of geos) {
+    position.set(g.attributes.position.array, v * 3);
+    normal.set(g.attributes.normal.array, v * 3);
+    for (const i of g.index.array) index[k++] = i + v;
+    v += g.attributes.position.count;
+    g.dispose();
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.BufferAttribute(position, 3));
+  out.setAttribute('normal', new THREE.BufferAttribute(normal, 3));
+  out.setIndex(new THREE.BufferAttribute(index, 1));
+  return out;
+}
+
+// ---------- Rễ cây chui ra từ dưới lớp đất ----------
+// Mỗi rễ chính to ở gốc, bò sát theo mặt đá một đoạn rồi buông thõng xuống, thuôn dần thành sợi mảnh,
+// đầu ngọn hơi hất ra ngoài. Dọc đường tách ra một hai rễ con xoè sang bên.
+function buildRoots(island, rockGeo) {
+  // Dò mặt đá: bắn một tia nằm ngang từ ngoài xa vào trục đảo, chỗ tia chạm đá là mặt đá ở hướng đó
+  const probe = new THREE.Mesh(rockGeo);
+  probe.updateMatrixWorld();
+  const ray = new THREE.Raycaster();
+  const from = new THREE.Vector3();
+  const toAxis = new THREE.Vector3();
+  const rockAt = (a, y) => {
+    from.set(Math.cos(a) * 30, y, Math.sin(a) * 30);
+    toAxis.set(-Math.cos(a), 0, -Math.sin(a));
+    ray.set(from, toAxis);
+    const hit = ray.intersectObject(probe, false)[0];
+    return hit ? 30 - hit.distance : 0;
+  };
+  const TIP = 0.012; // độ to ở đầu ngọn rễ
+  const thick = (r0, t) => TIP + (r0 - TIP) * (1 - t) ** 1.1;
+
+  // Đường đi của một rễ: xuất phát ở góc a, độ cao y, cách trục đảo r, dài len.
+  // Còn cao hơn hugTo thì bò sát mặt đá; thấp hơn thì buông thõng, rễ con thì xoè dần ra ngoài (splay).
+  const grow = (a, y, r, len, hugTo, drift, splay, r0) => {
+    const n = Math.max(5, Math.round(len / 0.22));
+    const phase = rand() * 6;
+    const out = { pts: [], a: [], r: [] };
+    let freeR = null;
+    let freeT = 0;
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      let yy = y - t * len;
+      const aa = a + drift * t + 0.012 * Math.sin(t * 7 + phase);
+      let rr = r;
+      if (i > 0) {
+        const rock = rockAt(aa, yy);
+        const clear = rock + thick(r0, t) + 0.03; // ôm sát nhưng không chìm vào đá
+        if (yy > hugTo) rr = clear;
+        else {
+          if (freeR === null) { freeR = out.r[i - 1]; freeT = t; }
+          rr = Math.max(freeR + splay * (t - freeT), clear);
+        }
+        const curl = Math.max(0, (t - 0.8) / 0.2); // đầu ngọn cong hất ra ngoài
+        rr += 0.3 * curl * curl;
+        yy += 0.22 * curl * curl;
+      }
+      out.pts.push(new THREE.Vector3(Math.cos(aa) * rr, yy, Math.sin(aa) * rr));
+      out.a.push(aa);
+      out.r.push(rr);
+    }
+    return out;
+  };
+
+  const tubes = [];
+  const COUNT = 14;
+  for (let i = 0; i < COUNT; i++) {
+    const a = 0.5 + (i / COUNT) * Math.PI * 2 + between(-0.15, 0.15);
+    if (Math.abs(Math.atan2(Math.sin(a - POND.a), Math.cos(a - POND.a))) < 0.25) continue; // chừa chỗ thác nước
+    const r0 = between(0.08, 0.12);
+    const len = between(1.6, 4.2);
+    const hugTo = -1.75 - between(0.5, 2.6); // có rễ bò sát đá tới cuối, có rễ sớm buông thõng
+    // Gốc rễ nằm khuất trong lớp đất sẫm (rộng 0,95 lần mép đảo), chui ra từ mặt dưới lớp đất
+    const root = grow(a, -1.55, edge(a) * 0.94, len, hugTo, between(-0.06, 0.06), 0, r0);
+    tubes.push(taperedTube(root.pts, r0, TIP));
+
+    const branches = 1 + Math.round(rand());
+    for (let b = 0; b < branches; b++) {
+      const tb = between(0.2, 0.6);
+      const j = Math.round(tb * (root.pts.length - 1));
+      const side = b % 2 ? 1 : -1;
+      const rb = thick(r0, tb) * 0.7;
+      const twig = grow(root.a[j], root.pts[j].y, root.r[j], between(0.5, 1.3), hugTo, side * between(0.06, 0.14), between(0.1, 0.35), rb);
+      tubes.push(taperedTube(twig.pts, rb, TIP));
+    }
+  }
+  island.add(new THREE.Mesh(mergeTubes(tubes), mat('#7a5236')));
+}
+
+// ---------- Dây leo vắt qua mép cỏ, buông thõng xuống, lấm tấm lá và vài bông hoa nhỏ ----------
+// Các góc đặt dây leo đã chừa ra thác nước, gốc cây và bụi cây sát mép đảo.
+const VINES = [0.45, 0.95, 1.5, 1.95, 2.6, -1.3, -2.95];
+function buildVines(island) {
+  const tubes = [];
+  const leaves = []; // [vị trí, hướng ra ngoài, nghiêng về bên nào, cỡ]
+  const blossoms = [];
+  for (const a of VINES) {
+    const e = edge(a);
+    const out = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
+    const side = new THREE.Vector3(-Math.sin(a), 0, Math.cos(a));
+    const hang = between(0.9, 2.6); // đoạn buông thõng dưới đáy lớp đất
+    const sway = between(-0.25, 0.25);
+    // Bò trên mặt cỏ, vắt qua mép bo tròn, rủ dọc thành lớp đất rồi buông xuống khoảng không
+    const profile = [[-0.35, -0.11, 0], [0.05, -0.08, 0], [0.24, -0.3, 0], [0.22, -0.8, 0.1], [0.17, -1.35, 0.2]];
+    const n = Math.round(hang / 0.35);
+    for (let i = 1; i <= n; i++) {
+      const t = i / n;
+      profile.push([0.17 + 0.1 * t, -1.35 - hang * t, 0.2 + sway * t + 0.08 * Math.sin(t * 5 + a)]);
+    }
+    const pts = profile.map(([dr, y, s]) => out.clone().multiplyScalar(e + dr).addScaledVector(side, s).setY(y));
+    tubes.push(taperedTube(pts, 0.03, 0.012, 5));
+
+    // Lá mọc so le hai bên, bắt đầu từ chỗ dây vắt qua mép cỏ
+    const curve = new THREE.CatmullRomCurve3(pts);
+    const length = curve.getLength();
+    let k = 0;
+    for (let s = 0.4; s < length - 0.1; s += between(0.16, 0.26), k++) {
+      const p = curve.getPointAt(s / length);
+      const lr = k % 2 ? 1 : -1;
+      leaves.push([p.clone().addScaledVector(side, lr * 0.07), out, lr, between(0.8, 1.25)]);
+      if (k % 5 === 3) blossoms.push(p.clone().addScaledVector(side, -lr * 0.05).addScaledVector(out, 0.04));
+    }
+  }
+  island.add(new THREE.Mesh(mergeTubes(tubes), mat('#4f9a52')));
+
+  // Lá: hình cầu ép dẹt thành chiếc lá thon, mặt lá quay ra ngoài, chĩa chéo xuống về một bên
+  const leafGeo = new THREE.SphereGeometry(0.1, 8, 6);
+  leafGeo.scale(0.6, 1, 0.2);
+  const leafMesh = new THREE.InstancedMesh(leafGeo, new THREE.MeshStandardMaterial({ roughness: 0.7 }), leaves.length);
+  const greens = ['#5fb36a', '#7fcf84', '#4f9e5c'].map((c) => new THREE.Color(c));
+  const dummy = new THREE.Object3D();
+  leaves.forEach(([p, out, lr, size], i) => {
+    dummy.position.copy(p);
+    dummy.lookAt(p.clone().add(out));
+    dummy.rotateZ(lr * 0.75);
+    dummy.scale.setScalar(size);
+    dummy.updateMatrix();
+    leafMesh.setMatrixAt(i, dummy.matrix);
+    leafMesh.setColorAt(i, greens[i % greens.length]);
+  });
+  island.add(leafMesh);
+
+  const flowerMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(0.05, 8, 6), mat('#ff9ec4'), blossoms.length);
+  blossoms.forEach((p, i) => {
+    dummy.position.copy(p);
+    dummy.rotation.set(0, 0, 0);
+    dummy.scale.setScalar(1);
+    dummy.updateMatrix();
+    flowerMesh.setMatrixAt(i, dummy.matrix);
+  });
+  island.add(flowerMesh);
 }
 
 // ---------- Cây: cây tán tròn và cây thông, trồng sau tường để làm khung cho căn phòng ----------
@@ -321,38 +502,96 @@ function buildPond(island) {
   island.add(at(pad, PX - 0.35, -0.1, PZ - 0.3, -Math.PI / 2, 0, 0));
   island.add(at(sphere(0.09, '#ff9ec4', 10, 8), PX - 0.35, -0.04, PZ - 0.3));
 
-  // Dòng suối từ ao chảy ra mép đảo
-  const u = new THREE.Vector3(Math.cos(POND.a), 0, Math.sin(POND.a));
-  const lip = edge(POND.a) + 0.2;
-  const runLen = lip - (POND.r + POND.size * 0.8);
-  const streamTex = streaks(256, 64, false);
-  streamTex.repeat.set(runLen / 2, 0.5);
-  const streamMat = new THREE.MeshStandardMaterial({ map: streamTex, roughness: 0.15, transparent: true, opacity: 0.92, emissive: '#2a6f9a', emissiveIntensity: 0.15 });
-  const run = at(new THREE.Group(), 0, 0, 0, 0, -POND.a, 0);
-  run.add(at(new THREE.Mesh(new THREE.PlaneGeometry(runLen, 0.75), streamMat), POND.r + POND.size * 0.8 + runLen / 2, -0.09, 0, -Math.PI / 2, 0, 0));
-  island.add(run);
+  // Suối và thác nước: một dải nước liền mạch chảy từ ao ra mép đảo, vọt qua mép rồi cong dần xuống
+  // theo đường parabol như nước thật. Càng rơi càng nhanh (vệt nước kéo dài ra), loe rộng và tan dần thành hơi nước.
+  const u = new THREE.Vector3(Math.cos(POND.a), 0, Math.sin(POND.a));  // hướng nước chảy, từ ao ra ngoài
+  const w = new THREE.Vector3(-Math.sin(POND.a), 0, Math.cos(POND.a)); // hướng ngang qua dòng nước
+  const start = POND.r + POND.size * 0.8;
+  const lip = edge(POND.a) + 0.2; // chỗ nước rời mép đảo (vượt qua mép cỏ bo tròn một chút)
+  const SPEED = 0.8; // tốc độ nước chảy trên mặt đảo
+  const G = 4;       // "trọng lực", nhẹ hơn thật cho thác rơi thong thả, dễ ngắm
+  const FALL = 7;    // rơi sâu chừng này thì tan hết thành hơi nước
+  const Y0 = -0.09;  // mặt nước suối
+  const T = Math.sqrt((2 * FALL) / G);
+  // Đường giữa dòng nước: [khoảng cách từ tâm đảo, độ cao, tốc độ chảy]
+  const line = [];
+  for (let i = 0; i <= 6; i++) line.push([start + ((lip - start) * i) / 6, Y0, SPEED]);
+  for (let i = 1; i <= 40; i++) {
+    const t = T * (i / 40) ** 1.5; // lấy mẫu dày ở chỗ uốn cong qua mép
+    line.push([lip + SPEED * t, Y0 - 0.5 * G * t * t, Math.hypot(SPEED, G * t)]);
+  }
+  const fallAt = (drop) => lip + SPEED * Math.sqrt((2 * drop) / G); // nước đã rơi "drop" thì cách tâm đảo bao xa
 
-  // Thác nước: một tấm màn nước rơi thẳng xuống, mờ dần ở phía dưới, có hơi nước bốc lên
-  const fallTex = streaks(64, 256, true);
-  fallTex.repeat.set(1, 2.5);
-  const fade = canvasTexture(4, 128, (ctx, w, h) => {
-    const g = ctx.createLinearGradient(0, 0, 0, h);
-    g.addColorStop(0, '#ffffff');
-    g.addColorStop(0.6, '#bbbbbb');
-    g.addColorStop(1, '#000000');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, w, h);
+  // Dựng dải nước theo đường giữa. Mỗi lát cắt ngang có 7 điểm: lúc chảy trên mặt đảo thì phẳng,
+  // lúc rơi thì cong phồng ra ngoài như một dòng nước có độ dày. Hai mép và phía dưới mờ dần (độ trong lưu ở màu đỉnh).
+  const ribbon = (widthScale, lift, alpha) => {
+    const M = 7;
+    const pos = [];
+    const uv = [];
+    const col = [];
+    const idx = [];
+    const C = new THREE.Vector3();
+    const prev = new THREE.Vector3();
+    const dir = new THREE.Vector3();
+    const n = new THREE.Vector3();
+    const p = new THREE.Vector3();
+    let v = 0; // toạ độ texture dọc dòng nước, tính theo thời gian chảy: chỗ nước nhanh thì vệt nước kéo dài ra
+    line.forEach(([d, y, speed], i) => {
+      C.copy(u).multiplyScalar(d).setY(y);
+      if (i > 0) v += C.distanceTo(prev) / ((speed + line[i - 1][2]) / 2);
+      prev.copy(C);
+      const next = line[Math.min(i + 1, line.length - 1)];
+      const back = line[Math.max(i - 1, 0)];
+      dir.copy(u).multiplyScalar(next[0] - back[0]).setY(next[1] - back[1]).normalize();
+      n.crossVectors(w, dir); // hướng lên khi nước chảy ngang, hướng ra ngoài khi nước rơi
+      const drop = Y0 - y;
+      const width = 0.9 * widthScale * (1 + 0.03 * drop);
+      const bulge = Math.min(1, drop / 0.6) * 0.3;
+      const fade = 1 - THREE.MathUtils.smoothstep(drop, FALL * 0.45, FALL);
+      for (let j = 0; j < M; j++) {
+        const k = (j / (M - 1)) * 2 - 1; // -1 … 1: từ mép này sang mép kia
+        p.copy(C).addScaledVector(w, (k * width) / 2).addScaledVector(n, (1 - k * k) * width * bulge + lift);
+        pos.push(p.x, p.y, p.z);
+        uv.push(j / (M - 1), -v * 0.6);
+        col.push(1, 1, 1, alpha * fade * (1 - Math.abs(k) ** 3));
+      }
+    });
+    for (let i = 0; i < line.length - 1; i++) {
+      for (let j = 0; j < M - 1; j++) {
+        const a = i * M + j;
+        idx.push(a, a + M, a + 1, a + 1, a + M, a + M + 1);
+      }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
+    geo.setIndex(idx);
+    geo.computeVertexNormals();
+    return geo;
+  };
+  const waterMat = (map, glow) => new THREE.MeshStandardMaterial({
+    map, vertexColors: true, transparent: true, depthWrite: false, side: THREE.DoubleSide,
+    roughness: 0.15, emissive: '#3a86b8', emissiveIntensity: glow,
   });
-  const fallMat = new THREE.MeshStandardMaterial({
-    map: fallTex, alphaMap: fade, transparent: true, depthWrite: false, side: THREE.DoubleSide,
-    roughness: 0.2, emissive: '#3a86b8', emissiveIntensity: 0.2,
+  // Lớp ngoài là thân dòng nước; lớp lõi hẹp hơn, sáng hơn, chảy nhanh hơn một chút cho nước có chiều sâu, lấp lánh
+  const bodyTex = streaks(64, 256, true);
+  const coreTex = streaks(64, 256, true);
+  const body = decoration(new THREE.Mesh(ribbon(1, 0, 0.92), waterMat(bodyTex, 0.2)));
+  const core = decoration(new THREE.Mesh(ribbon(0.5, 0.035, 0.55), waterMat(coreTex, 0.45)));
+  core.renderOrder = 1;
+  island.add(body, core);
+
+  // Bọt trắng chỗ nước vắt qua mép đảo
+  const foamMat = new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: '#ffffff', emissiveIntensity: 0.35, transparent: true, opacity: 0.85, roughness: 0.6 });
+  const foams = [-0.26, -0.05, 0.2].map((k, i) => {
+    const f = decoration(new THREE.Mesh(new THREE.SphereGeometry(0.11 - i * 0.015, 10, 8), foamMat));
+    f.position.copy(u).multiplyScalar(lip - 0.05 + i * 0.04).addScaledVector(w, k);
+    f.position.y = Y0 + 0.01;
+    f.scale.y = 0.45;
+    island.add(f);
+    return f;
   });
-  const FALL = 7;
-  const fall = decoration(new THREE.Mesh(new THREE.PlaneGeometry(0.75, FALL), fallMat));
-  fall.position.copy(u).multiplyScalar(lip + 0.02);
-  fall.position.y = -0.1 - FALL / 2;
-  fall.rotation.y = Math.atan2(u.x, u.z);
-  island.add(fall);
 
   const mistTex = canvasTexture(64, 64, (ctx) => {
     const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
@@ -363,16 +602,21 @@ function buildPond(island) {
   });
   const mists = [0, 1, 2].map((i) => {
     const s = decoration(new THREE.Sprite(new THREE.SpriteMaterial({ map: mistTex, transparent: true, depthWrite: false, opacity: 0.5 })));
-    s.position.copy(u).multiplyScalar(lip + 0.1 + i * 0.2);
-    s.position.y = -FALL * 0.75 - i * 0.4;
+    const drop = FALL * 0.72 + i * 0.4; // hơi nước bốc lên quanh chỗ thác bắt đầu tan
+    s.position.copy(u).multiplyScalar(fallAt(drop) + (i - 1) * 0.15);
+    s.position.y = Y0 - drop;
     island.add(s);
     return s;
   });
 
   return {
     update(t, dt, calm) {
-      streamTex.offset.x -= dt * 0.7 * calm;
-      fallTex.offset.y += dt * 1.4 * calm;
+      bodyTex.offset.y += dt * 0.6 * calm;
+      coreTex.offset.y += dt * 0.75 * calm;
+      foams.forEach((f, i) => {
+        const k = 1 + 0.12 * Math.sin(t * 6 + i * 2.1) * calm;
+        f.scale.set(k, 0.45 * k, k);
+      });
       mists.forEach((s, i) => {
         const k = (t * 0.5 + i / 3) % 1;
         s.scale.setScalar(0.9 + k * 1.4);
