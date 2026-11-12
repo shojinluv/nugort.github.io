@@ -17,6 +17,8 @@ bấm vào đồ vật để xem các dự án.
 Một vài chi tiết nhỏ: đồng hồ treo tường và Mặt Trời đều chạy theo giờ thật (sáng sớm nắng thấp bên trái,
 trưa cao ngay sau cửa sổ, chiều tà vàng cam bên phải), tới 6 giờ tối thì phòng tự chuyển sang buổi tối,
 và có bộ đếm xem bạn đã khám phá hết đồ vật chưa. Muốn xem trời lúc khác thì gõ `room.setTime(17.5)` trong Console.
+Đêm xuống thì sao và Dải Ngân Hà hiện lên, dùng chung một bầu trời với ngoài vũ trụ: ở dưới đất còn không khí nên sao
+lấp lánh, sát chân trời mờ dần, gần trăng thì nhạt đi, mưa thì mây che mất; ra ngoài vũ trụ thì sao đứng yên và sáng rõ.
 
 **🚀 Chế độ Vũ trụ:** bấm nút **Vũ trụ** ở góc trên để cả căn phòng bay ra ngoài quỹ đạo. Xung quanh là sao,
 Trái Đất và Mặt Trăng, thỉnh thoảng có sao băng; đồ đạc trôi lơ lửng; mèo mặc đồ phi hành gia (mũ có hai tai

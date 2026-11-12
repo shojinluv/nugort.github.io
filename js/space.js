@@ -203,8 +203,10 @@ export function buildSpace(world) {
   group.name = 'vũ trụ';
   world.scene.add(group);
 
-  const stars = buildStars(group);
-  const milkyWay = buildMilkyWay(stars.group); // Ngân Hà quay cùng bầu trời sao
+  // Bầu trời sao không nằm trong nhóm vũ trụ, vì ban đêm ở Trái Đất cũng thấy (xem starSky)
+  const stars = buildStars(world.scene);
+  const milkyWay = buildMilkyWay(stars.group, stars.dot); // Ngân Hà quay cùng bầu trời sao
+  stars.group.traverse(decoration);
   const earth = buildEarth(group);
   const moon = buildMoon(group);
   const sun = buildSun(group, world);
@@ -223,12 +225,14 @@ export function buildSpace(world) {
 
   world.updaters.push((t, dt) => {
     const p = world.spaceProgress;
+    // Ra khỏi bầu khí quyển (p 0,4 → 0,85) thì sao ngoài vũ trụ mới hiện. Hạ cánh thì chạy ngược lại.
+    const sky = smooth(clamp01((p - 0.4) / 0.45));
+    updateStarSky(t, sky);
     group.visible = p > 0.001;
     if (group.visible) {
       // Ba nhịp của chuyến bay: Trái Đất hiện ra dưới chân (p 0 → 0,1), rời bệ phóng và lên cao dần,
-      // ra khỏi bầu khí quyển thì sao trời mới hiện (p 0,4 → 0,85). Hạ cánh thì chạy ngược lại.
+      // rồi ra khỏi bầu khí quyển
       const ground = smooth(clamp01(p / 0.1));
-      const sky = smooth(clamp01((p - 0.4) / 0.45));
 
       const { h, k, dir } = launchPose(p, pose);
       earth.group.scale.setScalar(k);
@@ -236,16 +240,6 @@ export function buildSpace(world) {
       earth.clouds.scale.setScalar((1 + 0.012 / k) / 1.012);
       earth.group.position.copy(PAD).addScaledVector(dir, EARTH_R * k + h);
 
-      // Sao lấp lánh: mỗi lớp sao sáng tối lệch nhịp nhau.
-      // Vào bóng Trái Đất thì không còn nắng chói mắt, sao và Ngân Hà hiện rõ hơn hẳn
-      const dark = world.night;
-      stars.layers.forEach((m, i) => {
-        m.opacity = sky * (0.72 + 0.28 * dark) * (0.75 + 0.25 * Math.sin(t * (0.8 + i * 0.6) + i * 2));
-        m.size = m.userData.size * (1 + 0.3 * dark);
-      });
-      stars.group.rotation.y = t * 0.003; // cả bầu trời trôi rất chậm, như đang bay quanh quỹ đạo
-      milkyWay.material.opacity = sky * (0.75 + 0.25 * dark);
-      milkyWay.starsMat.opacity = sky * (0.7 + 0.3 * dark);
       sun.update(sky, t);
       planets.update(sky, t);
 
@@ -265,11 +259,45 @@ export function buildSpace(world) {
     }
     updateFloaters(world, t, dt);
   });
+
+  // Bầu trời sao: ban đêm ở Trái Đất (mờ hơn, lấp lánh, mưa thì mây che mất) trộn dần sang bầu trời vũ trụ theo sky
+  function updateStarSky(t, sky) {
+    const lerp = THREE.MathUtils.lerp;
+    const dark = world.night; // ngoài vũ trụ: vào bóng Trái Đất thì không còn nắng chói mắt, sao hiện rõ hơn hẳn
+    const ground = dark * (1 - world.rain);
+    starSky.time.value = world.reduceMotion ? 0 : t;
+    starSky.atmosphere.value = 1 - sky;
+    starSky.moonDir.value.copy(world.sunNow).negate(); // ban đêm trăng nằm đúng hướng ánh trăng rọi vào phòng
+    starSky.moonGlare.value = dark * (1 - sky);
+    const shine = lerp(ground * 0.85, 0.72 + 0.28 * dark, sky);
+    stars.layers.forEach((m) => {
+      m.uniforms.opacity.value = shine;
+      m.uniforms.size.value = m.userData.size * (1 + 0.3 * dark * sky);
+    });
+    milkyWay.material.opacity = lerp(ground * 0.5, 0.75 + 0.25 * dark, sky);
+    milkyWay.starsMat.uniforms.opacity.value = lerp(ground * 0.45, 0.7 + 0.3 * dark, sky);
+    stars.group.visible = shine > 0.002;
+    stars.group.rotation.y = t * 0.003; // cả bầu trời trôi rất chậm
+  }
 }
 
-// ---------- Sao: 3 lớp điểm sáng to nhỏ khác nhau, rải đều trên một mặt cầu lớn ----------
-function buildStars(group) {
-  const dot = canvasTexture(64, 64, (ctx) => {
+// ---------- Bầu trời sao dùng chung cho Trái Đất và vũ trụ ----------
+// Cùng một bầu trời, cùng vị trí từng ngôi sao; chỉ khác ở lớp không khí (starSky.atmosphere):
+//  - Dưới đất (1): sao lấp lánh vì không khí xáo động, sát chân trời mờ dần rồi khuất dưới biển mây,
+//    sao ở gần trăng bị ánh trăng lấn mờ, Ngân Hà nhạt hơn
+//  - Ngoài vũ trụ (0): không còn không khí nên sao đứng yên, sáng đều, thấy được cả bên dưới chân
+// Cất cánh ban đêm thì sao cứ thế thôi lấp lánh dần khi tàu ra khỏi bầu khí quyển.
+const starSky = {
+  time: { value: 0 },
+  atmosphere: { value: 1 },
+  moonDir: { value: new THREE.Vector3(0, 1, 0) }, // hướng nhìn về phía trăng
+  moonGlare: { value: 0 },                        // ánh trăng lấn mờ sao (chỉ ban đêm dưới đất)
+  pixelRatio: { value: Math.min(window.devicePixelRatio, 2) }, // giống renderer.setPixelRatio trong main.js
+};
+
+// Điểm sáng tròn mờ dần ra mép, dùng cho mọi ngôi sao
+function starDot() {
+  return canvasTexture(64, 64, (ctx) => {
     const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
     g.addColorStop(0, 'rgba(255, 255, 255, 1)');
     g.addColorStop(0.35, 'rgba(255, 255, 255, 0.8)');
@@ -277,11 +305,67 @@ function buildStars(group) {
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, 64, 64);
   });
+}
+
+// Mỗi ngôi sao có màu riêng (tint) và nhịp lấp lánh riêng (phase). size tính bằng pixel, xa gần như nhau
+function starMaterial(map, size) {
+  return new THREE.ShaderMaterial({
+    uniforms: { ...starSky, map: { value: map }, size: { value: size }, opacity: { value: 0 } },
+    vertexShader: /* glsl */ `
+      attribute vec3 tint;
+      attribute float phase;
+      uniform float time;
+      uniform float atmosphere;
+      uniform vec3 moonDir;
+      uniform float moonGlare;
+      uniform float size;
+      uniform float pixelRatio;
+      varying vec3 vTint;
+      varying float vAlpha;
+      void main() {
+        vec4 world = modelMatrix * vec4(position, 1.0);
+        vec3 dir = normalize(world.xyz);
+        float speed = 1.3 + 2.4 * fract(phase * 7.31);
+        float twinkle = 1.0 - 0.55 * atmosphere * (0.5 + 0.5 * sin(time * speed + phase * 6.2832));
+        float horizon = mix(1.0, smoothstep(-0.05, 0.32, dir.y), atmosphere);
+        float glare = 1.0 - 0.85 * moonGlare * smoothstep(0.93, 0.995, dot(dir, moonDir));
+        vAlpha = twinkle * horizon * glare;
+        vTint = tint;
+        gl_Position = projectionMatrix * viewMatrix * world;
+        gl_PointSize = size * pixelRatio;
+      }`,
+    fragmentShader: /* glsl */ `
+      uniform sampler2D map;
+      uniform float opacity;
+      varying vec3 vTint;
+      varying float vAlpha;
+      void main() {
+        vec4 tex = texture2D(map, gl_PointCoord);
+        gl_FragColor = vec4(vTint * tex.rgb, tex.a * vAlpha * opacity);
+        #include <colorspace_fragment>
+      }`,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+}
+
+// Nhịp lấp lánh riêng cho từng sao, tính từ số thứ tự (không rút số ngẫu nhiên, để không xáo trộn chuỗi rand())
+function phases(count, salt) {
+  const out = new Float32Array(count);
+  for (let i = 0; i < count; i++) out[i] = Math.abs(Math.sin(i * 12.9898 + salt * 78.233) * 43758.5453) % 1;
+  return out;
+}
+
+// 3 lớp sao to nhỏ khác nhau, rải đều trên một mặt cầu lớn
+function buildStars(parent) {
+  const dot = starDot();
   const palette = ['#ffffff', '#ffffff', '#d6e4ff', '#fff0c8', '#ffd9ec'].map((c) => new THREE.Color(c));
 
   const starGroup = new THREE.Group();
-  group.add(starGroup);
-  const layers = [[900, 2], [320, 3.2], [80, 5]].map(([count, size]) => {
+  starGroup.name = 'bầu trời sao';
+  parent.add(starGroup);
+  const layers = [[900, 2], [320, 3.2], [80, 5]].map(([count, size], layer) => {
     const pos = new Float32Array(count * 3);
     const col = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
@@ -294,16 +378,14 @@ function buildStars(group) {
     }
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    geometry.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    const material = new THREE.PointsMaterial({
-      size, map: dot, vertexColors: true, sizeAttenuation: false, // size tính bằng pixel, xa gần như nhau
-      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false,
-    });
+    geometry.setAttribute('tint', new THREE.BufferAttribute(col, 3));
+    geometry.setAttribute('phase', new THREE.BufferAttribute(phases(count, layer), 1));
+    const material = starMaterial(dot, size);
     material.userData.size = size;
     starGroup.add(new THREE.Points(geometry, material));
     return material;
   });
-  return { group: starGroup, layers };
+  return { group: starGroup, layers, dot };
 }
 
 // ---------- Trái Đất: quả cầu lớn ở phía dưới, có mây, quầng khí quyển và đèn thành phố ----------
@@ -560,11 +642,21 @@ const gauss = () => (rand() + rand() + rand() + rand() - 2) / 2;   // số ngẫ
 const coreness = (u) => Math.exp(-(((u - 0.5) / 0.14) ** 2));     // 1 ở lõi Ngân Hà, 0 ở xa
 const bandWidth = (u) => 0.1 + 0.08 * coreness(u);                // gần lõi thì dải sáng phình to hơn
 
-function buildMilkyWay(parent) {
+function buildMilkyWay(parent, dot) {
   const material = new THREE.MeshBasicMaterial({
     map: canvasTexture(2048, 1024, drawMilkyWay), side: THREE.BackSide, transparent: true, opacity: 0,
     depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false,
   });
+  // Dưới đất thì đoạn Ngân Hà sát chân trời cũng mờ dần như sao (xem starSky)
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.atmosphere = starSky.atmosphere;
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying float vUp;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvUp = normalize((modelMatrix * vec4(transformed, 1.0)).xyz).y;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying float vUp;\nuniform float atmosphere;')
+      .replace('#include <map_fragment>', '#include <map_fragment>\ndiffuseColor.a *= mix(1.0, smoothstep(-0.05, 0.32, vUp), atmosphere);');
+  };
   const mesh = new THREE.Mesh(new THREE.SphereGeometry(200, 64, 32), material);
 
   // Sao li ti dày đặc trong dải sáng: dùng điểm sáng thật cho sắc nét
@@ -587,11 +679,9 @@ function buildMilkyWay(parent) {
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  geometry.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  const starsMat = new THREE.PointsMaterial({
-    size: 1.6, vertexColors: true, sizeAttenuation: false, transparent: true, opacity: 0,
-    depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false,
-  });
+  geometry.setAttribute('tint', new THREE.BufferAttribute(col, 3));
+  geometry.setAttribute('phase', new THREE.BufferAttribute(phases(count, 3), 1));
+  const starsMat = starMaterial(dot, 2.2);
   mesh.add(new THREE.Points(geometry, starsMat));
   // Giữa tấm hình (lõi Ngân Hà, chỗ sáng nhất) nằm ở hướng +x của quả cầu, dải sáng nằm trên mặt phẳng ngang.
   // Ta chọn: dải sáng chạy chéo từ dưới trái lên trên phải, lõi nằm ở phía trên bên phải khung hình.

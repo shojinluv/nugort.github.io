@@ -1,6 +1,7 @@
 // sky.js – Thế giới quanh hòn đảo ở "chiều không gian khác" (bối cảnh Trái Đất):
-// biển mây trải tới tận chân trời, mấy hòn đảo bay xa xa trong sương, Mặt Trời ban ngày, trăng và sao ban đêm.
+// biển mây trải tới tận chân trời, mấy hòn đảo bay xa xa trong sương, Mặt Trời ban ngày, trăng ban đêm.
 // Mặt Trời và trăng nằm đúng hướng nắng (hay ánh trăng) đang rọi vào phòng.
+// Sao và Dải Ngân Hà ban đêm dùng chung bầu trời sao với ngoài vũ trụ (xem starSky trong space.js).
 // Lúc bấm "Vũ trụ", cả thế giới này mờ đi trong nửa giây đầu, nhường chỗ cho Trái Đất thật hiện ra bên dưới
 // (như bay ngược về chiều không gian thường); hạ cánh thì hiện lại.
 import * as THREE from 'three';
@@ -648,7 +649,7 @@ function buildFarIslands(realm) {
   };
 }
 
-// ---------- Mặt Trời, trăng và sao ----------
+// ---------- Mặt Trời, trăng và quầng sáng chân trời (sao dùng chung với vũ trụ, xem space.js) ----------
 // Mặt Trời và trăng đặt đúng hướng nguồn sáng đang rọi vào phòng (ngược với hướng tia nắng),
 // nên nhìn ngược lên phía sau căn phòng là thấy, và khớp với vệt nắng, bóng đổ, cầu vồng.
 function buildSunMoonStars(realm, world) {
@@ -695,21 +696,40 @@ function buildSunMoonStars(realm, world) {
   moon.scale.setScalar(22);
   realm.add(moon);
 
-  // Sao: rải trên nửa trên của một mặt cầu lớn, chỉ hiện lúc trời tối
-  const count = 360;
-  const pos = new Float32Array(count * 3);
+  // Sao ban đêm giờ dùng chung bầu trời sao với ngoài vũ trụ (xem starSky trong space.js).
+  // Vẫn rút số ngẫu nhiên y như lúc còn rải sao ở đây, để những thứ dựng sau (cá voi, mây mưa...) không bị đổi chỗ
   const v = new THREE.Vector3();
-  for (let i = 0; i < count; i++) {
+  for (let i = 0; i < 360; i++) {
     do v.set(between(-1, 1), between(0.12, 1), between(-1, 1));
     while (v.lengthSq() > 1);
-    v.normalize().multiplyScalar(170);
-    pos.set([v.x, v.y, v.z], i * 3);
   }
-  const starGeo = new THREE.BufferGeometry();
-  starGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const starMat = new THREE.PointsMaterial({ color: '#fffbe8', size: 2.2, sizeAttenuation: false, transparent: true, opacity: 0, depthWrite: false });
-  const stars = new THREE.Points(starGeo, starMat);
-  realm.add(stars);
+
+  // Quầng sáng nhạt sát chân trời ban đêm: trời ở dưới đất không đen hẳn, phía trên biển mây còn hơi sáng
+  // (ánh trăng hắt lên từ mây, và trời phát sáng mờ mờ ở tầng cao). Ngoài vũ trụ thì không còn quầng này
+  const glowMat = new THREE.ShaderMaterial({
+    uniforms: { strength: { value: 0 }, color: { value: new THREE.Color('#8a90e0') } },
+    vertexShader: /* glsl */ `
+      varying float vUp;
+      void main() {
+        vUp = normalize(position).y;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }`,
+    fragmentShader: /* glsl */ `
+      uniform float strength;
+      uniform vec3 color;
+      varying float vUp;
+      void main() {
+        float glow = exp(-pow((vUp + 0.02) / 0.14, 2.0));
+        gl_FragColor = vec4(color, glow * strength);
+        #include <colorspace_fragment>
+      }`,
+    side: THREE.BackSide,
+    transparent: true,
+    depthWrite: false,
+  });
+  const glow = new THREE.Mesh(new THREE.SphereGeometry(165, 48, 24), glowMat);
+  glow.renderOrder = -5; // vẽ trước cả biển mây, như một lớp nền trời
+  realm.add(glow);
 
   return {
     update(t, n, keep) {
@@ -717,12 +737,13 @@ function buildSunMoonStars(realm, world) {
       sun.position.copy(world.sunNow).multiplyScalar(-140);
       moon.position.copy(sun.position);
       sun.material.color.setRGB(1, 1 - 0.18 * world.golden, 1 - 0.38 * world.golden); // lúc thấp thì ngả vàng cam
-      sunMat.opacity = (1 - n) * keep * (1 - 0.85 * world.rain); // mưa thì mây mưa che khuất Mặt Trời
-      moonMat.opacity = n * keep;
+      const clouds = 1 - 0.85 * world.rain; // mưa thì mây mưa che khuất Mặt Trời, trăng
+      sunMat.opacity = (1 - n) * keep * clouds;
+      moonMat.opacity = n * keep * clouds;
       sun.visible = sunMat.opacity > 0.01;
       moon.visible = moonMat.opacity > 0.01;
-      starMat.opacity = n * keep * (0.75 + 0.25 * Math.sin(t * 1.3));
-      stars.visible = starMat.opacity > 0.01;
+      glowMat.uniforms.strength.value = 0.32 * n * keep;
+      glow.visible = glowMat.uniforms.strength.value > 0.005;
     },
   };
 }
