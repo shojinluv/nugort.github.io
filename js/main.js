@@ -104,7 +104,7 @@ const SPACE_NIGHT = { sky: C('#5c62b0'), ground: C('#15132b'), hemi: 0.4, sun: C
 //  - space, spaceProgress, spaceOn: trạng thái bay ra vũ trụ (xem phần 7b)
 //  - sunDir: hướng Mặt Trời cố định ngoài vũ trụ; sunNow: hướng tia nắng (hay ánh trăng) đang chiếu lúc này (xem phần 7c)
 const world = {
-  scene, camera, sunDir: SUN_DIR, sunNow: SUN_DIR.clone(), golden: 0, updaters: [], nightFns: [], clickables: {}, floaters: [],
+  scene, camera, sunDir: SUN_DIR, sunNow: SUN_DIR.clone(), golden: 0, rain: 0, updaters: [], nightFns: [], clickables: {}, floaters: [],
   night: 0, space: 0, spaceProgress: 0, spaceOn: false, reduceMotion,
 };
 buildRoom(world);
@@ -171,7 +171,14 @@ function applyNight(n) {
     hemi.color.lerp(GOLD_SKY, g * 0.35);
     sun.intensity *= 1 - 0.2 * g;
   }
-  tintSky(g);
+  // Trời mưa: mây che bớt nắng, ánh sáng xám lại (xem buildWeather trong sky.js)
+  const r = world.rain || 0;
+  if (r > 0.001) {
+    sun.intensity *= 1 - 0.65 * r;
+    hemi.intensity *= 1 - 0.3 * r;
+    hemi.color.lerp(RAIN_SKY, 0.45 * r);
+  }
+  tintSky(g, r);
   world.night = n;
   world.nightFns.forEach((fn) => fn(n));
 }
@@ -185,6 +192,7 @@ ui.nightBtn.addEventListener('click', () => setNight(!nightTarget, true));
 // Ban đêm trăng đi một vòng cung y như vậy. Ra vũ trụ thì về đúng hướng Mặt Trời cố định ngoài đó (SUN_DIR).
 const GOLD_SUN = new THREE.Color('#ffb46e');
 const GOLD_SKY = new THREE.Color('#ffd2b0');
+const RAIN_SKY = new THREE.Color('#b8b4c8');
 const deg = THREE.MathUtils.degToRad;
 // f: 0 lúc mọc (6 giờ), 1 lúc lặn (18 giờ) → hướng tia sáng đi tới
 const arcDir = (f, out) => {
@@ -207,17 +215,18 @@ function updateSun(n) {
   world.golden = (1 - THREE.MathUtils.smoothstep(elevation, deg(22), deg(40))) * (1 - n) * (1 - world.space);
 }
 
-// Màu nền trời ban ngày ngả hồng cam lúc sáng sớm, chiều tà (đổi biến màu CSS, chỉ khi đổi đủ nhiều)
-const SKY_1 = [new THREE.Color('#fff4ea'), new THREE.Color('#ffe4cc')];
-const SKY_2 = [new THREE.Color('#f7d3c1'), new THREE.Color('#f3a989')];
+// Màu nền trời ban ngày ngả hồng cam lúc sáng sớm, chiều tà, ngả xám lúc mưa (đổi biến màu CSS, chỉ khi đổi đủ nhiều)
+const SKY_1 = [new THREE.Color('#fff4ea'), new THREE.Color('#ffe4cc'), new THREE.Color('#e6e3ea')];
+const SKY_2 = [new THREE.Color('#f7d3c1'), new THREE.Color('#f3a989'), new THREE.Color('#bdb8c8')];
 const skyTmp = new THREE.Color();
-let skyTint = -1;
-function tintSky(g) {
-  if (Math.abs(g - skyTint) < 0.01) return;
-  skyTint = g;
+let skyTint = [-1, -1];
+function tintSky(g, r) {
+  if (Math.abs(g - skyTint[0]) < 0.01 && Math.abs(r - skyTint[1]) < 0.01) return;
+  skyTint = [g, r];
   const root = document.documentElement.style;
-  root.setProperty('--day-1', skyTmp.lerpColors(SKY_1[0], SKY_1[1], g).getStyle());
-  root.setProperty('--day-2', skyTmp.lerpColors(SKY_2[0], SKY_2[1], g).getStyle());
+  const mix = (stops) => skyTmp.lerpColors(stops[0], stops[1], g).lerp(stops[2], r * 0.85).getStyle();
+  root.setProperty('--day-1', mix(SKY_1));
+  root.setProperty('--day-2', mix(SKY_2));
 }
 
 // Trang mở lâu: tới 6 giờ sáng hay 6 giờ tối thì tự chuyển ngày đêm (trừ khi người xem đã tự bấm chọn)

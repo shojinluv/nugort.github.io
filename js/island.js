@@ -607,6 +607,19 @@ function buildPond(island, world) {
     ctx.arc(23, 22, 6, 0, Math.PI * 2);
     ctx.fill();
   });
+  // Trời mưa thì hạt mưa lộp độp trên mặt ao: những vòng gợn sóng nhỏ loang ra rồi tan
+  const ripples = Array.from({ length: 12 }, () => {
+    const m = decoration(new THREE.Mesh(
+      new THREE.RingGeometry(0.03, 0.05, 20).rotateX(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0, depthWrite: false }),
+    ));
+    m.visible = false;
+    island.add(m);
+    return { m, life: 0 };
+  });
+  let nextRipple = 0;
+  let rippleClock = 0;
+
   const bubbles = fishes.slice(0, 3).map((f) => {
     const s = decoration(new THREE.Sprite(new THREE.SpriteMaterial({ map: bubbleTex, transparent: true, depthWrite: false, opacity: 0 })));
     island.add(s);
@@ -845,6 +858,24 @@ function buildPond(island, world) {
         f.swish += dt * (6 * awake + 1.5 * sleep) * calm; // ngủ thì đuôi chỉ khẽ phe phẩy
         f.tail.rotation.y = Math.sin(f.swish + f.phase) * (0.45 * awake + 0.1 * sleep);
       }
+      // Gợn sóng mưa: mưa càng to thì hạt rơi xuống ao càng dày
+      rippleClock += dt * world.rain * 14;
+      while (rippleClock > 1) {
+        rippleClock -= 1;
+        const r = ripples[nextRipple++ % ripples.length];
+        const a = Math.random() * Math.PI * 2;
+        const d = Math.sqrt(Math.random()) * (POND.size - 0.15);
+        r.m.position.set(PX + Math.cos(a) * d, POND_Y + 0.004, PZ + Math.sin(a) * d);
+        r.life = 1;
+      }
+      for (const r of ripples) {
+        if (r.life <= 0) continue;
+        r.life = Math.max(0, r.life - dt / 0.9);
+        r.m.visible = r.life > 0;
+        r.m.scale.setScalar(1 + (1 - r.life) * 5);
+        r.m.material.opacity = 0.7 * r.life;
+      }
+
       // Bong bóng ngủ nổi lên từ đầu mấy con cá đang ngủ say, mỗi con một nhịp
       bubbles.forEach(({ s, f }, i) => {
         const p = (t * 0.3 + i / 3) % 1;

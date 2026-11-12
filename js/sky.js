@@ -27,20 +27,185 @@ export function buildRealm(world) {
   const sky = buildSunMoonStars(realm, world);
   const whale = buildWhale(realm);
   world.whale = whale.now; // gọi cá voi ra ngay, không phải đợi tới lượt (thử trong Console: room.world.whale())
+  const weather = buildWeather(realm, world);
+  world.rainNow = weather.now; // gọi mưa ngay (thử trong Console: room.world.rainNow())
   realm.traverse(decoration); // cảnh nền: không bấm được, không đổ bóng
 
   world.updaters.push((t, dt) => {
     // Cất cánh thì mờ dần trong lúc Trái Đất thật hiện ra (p từ 0 tới 0,1), hạ cánh thì ngược lại
     const keep = 1 - THREE.MathUtils.smoothstep(world.spaceProgress, 0, 0.1);
     realm.visible = keep > 0.001;
-    if (!realm.visible) return;
+    if (!realm.visible) {
+      world.rain = 0;
+      return;
+    }
     const n = world.night;
     const calm = world.reduceMotion ? 0 : 1;
     sea.update(t, n, keep, calm);
     isles.update(t, n, keep, calm);
     sky.update(t, n, keep);
     whale.update(t, dt, n, keep, calm);
+    weather.update(t, dt, n, keep, calm);
   });
+}
+
+// ---------- Mưa và cầu vồng sau mưa ----------
+// Thỉnh thoảng có một cơn mưa ngắn: trời tối sầm, mây mưa kéo tới trên cao, hạt mưa rơi khắp quanh đảo
+// (không lọt vào trong phòng, không xuyên qua mặt đảo), mặt ao lăn tăn (xem island.js).
+// Tạnh mưa thì hơi nước còn lơ lửng khắp nơi, nên hiện một cầu vồng lớn trên nền trời: đúng như ngoài đời,
+// nó là một vòng tròn 42° quanh điểm đối diện Mặt Trời (cầu vồng phụ mờ hơn ở 51°), chỉ thấy khi quay lưng về phía
+// Mặt Trời. Đảo lơ lửng trên mây nên nhìn xuống còn thấy được trọn cả vòng tròn, như nhìn từ máy bay.
+// world.rain (0 → 1) là lượng mưa lúc này: ánh sáng, nền trời, biển mây, mặt ao đều đọc giá trị này.
+function buildWeather(realm, world) {
+  // Hạt mưa: mỗi hạt là một vạch ngắn, rơi bằng shader (máy chỉ cần gửi thời gian), tới đáy thì quay lại từ trên cao
+  const COUNT = 2600;
+  const TOP = 30;
+  const HEIGHT = TOP - SEA_Y;
+  const pos = new Float32Array(COUNT * 2 * 3);
+  const end = new Float32Array(COUNT * 2);
+  const phase = new Float32Array(COUNT * 2);
+  for (let i = 0; i < COUNT; i++) {
+    const x = between(-48, 48);
+    const z = between(-48, 48);
+    const ph = rand();
+    for (let k = 0; k < 2; k++) {
+      pos.set([x, 0, z], (i * 2 + k) * 3);
+      end[i * 2 + k] = k;
+      phase[i * 2 + k] = ph;
+    }
+  }
+  const rainGeo = new THREE.BufferGeometry();
+  rainGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  rainGeo.setAttribute('end', new THREE.BufferAttribute(end, 1));
+  rainGeo.setAttribute('phase', new THREE.BufferAttribute(phase, 1));
+  rainGeo.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 6, 0), 80);
+  const rainMat = new THREE.ShaderMaterial({
+    uniforms: { time: { value: 0 }, amount: { value: 0 }, night: { value: 0 } },
+    vertexShader: /* glsl */ `
+      attribute float end;   // 0: đầu trên của vạch mưa, 1: đầu dưới
+      attribute float phase; // mỗi hạt một nhịp rơi riêng
+      uniform float time;
+      uniform float amount;  // lượng mưa: phần hạt được hiện ra
+      varying float vAlpha;
+      void main() {
+        vec3 p = position;
+        float y = ${TOP.toFixed(1)} - mod(time * 22.0 + phase * ${HEIGHT.toFixed(1)}, ${HEIGHT.toFixed(1)});
+        p.y = y - end * 0.75;
+        p.x += end * 0.1; // gió nghiêng nhẹ
+        vAlpha = step(phase, amount);
+        // Không mưa trong phòng (dưới trần) và dưới mặt đảo
+        float inRoom = step(-5.5, p.x) * step(p.x, 5.2) * step(-5.5, p.z) * step(p.z, 5.2) * step(p.y, 6.1);
+        float underIsland = step(length(p.xz + vec2(0.15)), 10.4) * step(p.y, -0.5);
+        if (inRoom + underIsland > 0.5) vAlpha = 0.0;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+      }`,
+    fragmentShader: /* glsl */ `
+      uniform float night;
+      varying float vAlpha;
+      void main() {
+        if (vAlpha < 0.01) discard;
+        gl_FragColor = vec4(mix(vec3(0.86, 0.9, 1.0), vec3(0.55, 0.6, 0.85), night), 0.42 * vAlpha);
+      }`,
+    transparent: true,
+    depthWrite: false,
+  });
+  const rain = new THREE.LineSegments(rainGeo, rainMat);
+  rain.frustumCulled = false;
+  realm.add(rain);
+
+  // Mây mưa xám kéo tới trên cao
+  const stormMat = new THREE.MeshStandardMaterial({ color: '#8d8a9c', emissive: '#4a4658', emissiveIntensity: 0.3, roughness: 1, transparent: true, opacity: 0 });
+  const storm = [];
+  for (let i = 0; i < 26; i++) {
+    const a = rand() * Math.PI * 2;
+    const r = between(0, 60);
+    const size = between(6, 13);
+    for (let k = 0; k < 3; k++) storm.push([Math.cos(a) * r + between(-1, 1) * size, between(24, 30), Math.sin(a) * r + between(-1, 1) * size, size * between(0.7, 1)]);
+  }
+  const stormMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 14, 10), stormMat, storm.length);
+  const m = new THREE.Matrix4();
+  storm.forEach(([x, y, z, s], i) => stormMesh.setMatrixAt(i, m.makeScale(s, s * 0.45, s).setPosition(x, y, z)));
+  realm.add(stormMesh);
+
+  // Cầu vồng sau mưa: vẽ lên mặt trong một quả cầu lớn bao quanh, mỗi điểm tự tính góc giữa tia nhìn và hướng nắng
+  const bowMat = new THREE.ShaderMaterial({
+    uniforms: { antiSun: { value: world.sunNow }, strength: { value: 0 } },
+    vertexShader: /* glsl */ `
+      varying vec3 vWorld;
+      void main() {
+        vec4 w = modelMatrix * vec4(position, 1.0);
+        vWorld = w.xyz;
+        gl_Position = projectionMatrix * viewMatrix * w;
+      }`,
+    fragmentShader: /* glsl */ `
+      uniform vec3 antiSun;
+      uniform float strength;
+      varying vec3 vWorld;
+      vec3 hue(float h) { return clamp(abs(fract(h + vec3(0.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0) - 1.0, 0.0, 1.0); }
+      float band(float a, float lo, float hi) { return smoothstep(lo - 0.8, lo + 0.6, a) * (1.0 - smoothstep(hi - 0.6, hi + 0.8, a)); }
+      void main() {
+        float a = degrees(acos(clamp(dot(normalize(vWorld - cameraPosition), antiSun), -1.0, 1.0)));
+        float p = band(a, 39.5, 43.5);                              // cầu vồng chính: tím trong, đỏ ngoài
+        vec3 c1 = hue(mix(0.78, 0.0, clamp((a - 39.5) / 4.0, 0.0, 1.0)));
+        float s = band(a, 50.5, 54.0) * 0.32;                       // cầu vồng phụ: đỏ trong, tím ngoài
+        vec3 c2 = hue(mix(0.0, 0.78, clamp((a - 50.5) / 3.5, 0.0, 1.0)));
+        float inner = smoothstep(42.0, 20.0, a) * 0.06;             // phía trong vòng cầu vồng trời sáng hơn một chút
+        float w = p + s;
+        vec3 col = mix((c1 * p + c2 * s) / max(w, 1e-3), vec3(1.0), 0.28);
+        col = mix(vec3(1.0), col, w / max(w + inner, 1e-3));
+        gl_FragColor = vec4(col, (w * 0.75 + inner) * strength);
+      }`,
+    transparent: true,
+    depthWrite: false,
+    side: THREE.BackSide,
+  });
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(150, 64, 32), bowMat);
+  dome.renderOrder = 1; // vẽ sau biển mây, nên cầu vồng hiện lên trước biển mây nhưng vẫn bị đảo che khuất
+  realm.add(dome);
+
+  // Lịch thời tiết: trời quang một lúc → mưa chừng 20 giây → tạnh, cầu vồng hiện rồi tan → lại trời quang
+  const w = { phase: 'clear', t: 0, wait: between(45, 75), length: 22, rain: 0, bow: 0 };
+  const ss = THREE.MathUtils.smoothstep;
+  return {
+    update(t, dt, n, keep, calm) {
+      w.t += dt;
+      if (w.phase === 'clear') {
+        w.rain = 0;
+        if (calm && (w.wait -= dt) <= 0) {
+          w.phase = 'rain';
+          w.t = 0;
+          w.length = between(18, 26);
+        }
+      } else if (w.phase === 'rain') {
+        w.rain = ss(w.t, 0, 3) * (1 - ss(w.t, w.length - 4, w.length));
+        if (w.t > w.length) {
+          w.phase = 'after';
+          w.t = 0;
+        }
+      } else if (w.phase === 'after') {
+        w.bow = ss(w.t, 0, 4) * (1 - ss(w.t, 34, 44));
+        if (w.t > 44) {
+          w.phase = 'clear';
+          w.wait = between(240, 420); // vài phút sau mới mưa tiếp
+          w.bow = 0;
+        }
+      }
+      world.rain = w.rain * keep;
+      rainMat.uniforms.time.value = t;
+      rainMat.uniforms.amount.value = world.rain;
+      rainMat.uniforms.night.value = n;
+      rain.visible = world.rain > 0.005;
+      stormMat.opacity = world.rain * 0.92;
+      stormMesh.visible = stormMat.opacity > 0.01;
+      bowMat.uniforms.strength.value = w.bow * (1 - n) * keep; // cầu vồng cần nắng: ban đêm không có
+      dome.visible = bowMat.uniforms.strength.value > 0.005;
+    },
+    // Gọi mưa ngay (thử trong Console: room.world.rainNow())
+    now() {
+      w.phase = 'clear';
+      w.wait = 0;
+    },
+  };
 }
 
 // Đổi chế độ trong suốt cho một nhóm vật liệu chỉ khi cần mờ dần (bình thường vẽ như vật đặc cho khỏi lỗi chồng hình)
@@ -271,6 +436,7 @@ function buildCloudSea(realm, world) {
       night: { value: 0 },
       opacity: { value: 1 },
       golden: { value: 0 },             // sáng sớm, chiều tà: đỉnh mây ửng vàng cam
+      gloom: { value: 0 },              // trời mưa: mây xám lại
       sunXZ: { value: new THREE.Vector2(0, -1) }, // hướng về phía Mặt Trời, trên mặt phẳng ngang (cập nhật mỗi khung hình)
     },
     vertexShader: /* glsl */ `
@@ -300,6 +466,7 @@ function buildCloudSea(realm, world) {
       }
       uniform vec2 sunXZ;
       uniform float golden;
+      uniform float gloom;
       void main() {
         vec2 q = vWorld.xz * 0.05 + vec2(time * 0.008, time * 0.004); // mây trôi rất chậm
         float c = fbm(q);
@@ -311,6 +478,8 @@ function buildCloudSea(realm, world) {
         float horizon = 1.0 - smoothstep(120.0, 250.0, d); // ra xa thì tan vào chân trời
         vec3 top = mix(mix(vec3(1.0, 1.0, 1.0), vec3(1.0, 0.86, 0.7), golden), vec3(0.42, 0.45, 0.74), night);
         vec3 shade = mix(mix(vec3(0.95, 0.86, 0.89), vec3(0.93, 0.7, 0.72), golden), vec3(0.1, 0.11, 0.26), night);
+        top = mix(top, top * vec3(0.74, 0.73, 0.8), gloom);
+        shade = mix(shade, shade * vec3(0.62, 0.6, 0.7), gloom);
         vec3 col = mix(shade, top, mix(0.5, 1.0, puff) * lit);
         gl_FragColor = vec4(col, (0.72 + 0.28 * puff) * horizon * opacity);
       }`,
@@ -349,8 +518,9 @@ function buildCloudSea(realm, world) {
       material.uniforms.night.value = n;
       material.uniforms.opacity.value = keep;
       material.uniforms.golden.value = world.golden;
+      material.uniforms.gloom.value = world.rain;
       material.uniforms.sunXZ.value.set(-world.sunNow.x, -world.sunNow.z).normalize();
-      puffMat.emissiveIntensity = 0.35 * (1 - n) + 0.03; // ban đêm mây tối theo trời
+      puffMat.emissiveIntensity = (0.35 * (1 - n) + 0.03) * (1 - 0.75 * world.rain); // ban đêm, trời mưa thì mây tối lại
       puffMat.opacity = keep;
       clouds.position.x = Math.sin(t * 0.02) * 2 * calm; // cả đàn mây dạt qua dạt lại thật chậm
     },
@@ -520,7 +690,7 @@ function buildSunMoonStars(realm, world) {
       sun.position.copy(world.sunNow).multiplyScalar(-140);
       moon.position.copy(sun.position);
       sun.material.color.setRGB(1, 1 - 0.18 * world.golden, 1 - 0.38 * world.golden); // lúc thấp thì ngả vàng cam
-      sunMat.opacity = (1 - n) * keep;
+      sunMat.opacity = (1 - n) * keep * (1 - 0.85 * world.rain); // mưa thì mây mưa che khuất Mặt Trời
       moonMat.opacity = n * keep;
       sun.visible = sunMat.opacity > 0.01;
       moon.visible = moonMat.opacity > 0.01;
