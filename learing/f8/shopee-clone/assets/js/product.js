@@ -171,15 +171,88 @@ function renderProduct() {
     </div>`;
 
   // ---------- Ảnh ----------
+  // Ảnh lớn là một nút: bấm vào thì mở khung xem ảnh lớn (xem phần "Xem ảnh lớn" bên dưới).
+  // Đổi ảnh thì ảnh mới trượt nhẹ vào từ phía đang chuyển tới (slide: biến CSS --from và lớp is-sliding)
   let shot = 0;
+  const slide = (dir) => (dir ? ` is-sliding" style="--from:${dir > 0 ? 18 : -18}px;` : '" style="');
   const showShot = (i) => {
-    shot = (i + SHOTS.length) % SHOTS.length;
+    const next = (i + SHOTS.length) % SHOTS.length;
+    const dir = Math.sign(i - shot);
+    shot = next;
     const s = SHOTS[shot];
-    $('g-main').innerHTML = `<div class="shot shot--main" style="background:${s.bg()}" role="img" aria-label="${esc(p.name)}, ${s.label.toLowerCase()}">${s.html()}</div>
+    $('g-main').innerHTML = `<button type="button" class="shot shot--main${slide(dir)}background:${s.bg()}" data-zoom aria-label="Xem ảnh lớn: ${esc(p.name)}, ${s.label.toLowerCase()}">${s.html()}</button>
       ${off ? `<span class="sale sale--lg">${off}%<br>GIẢM</span>` : ''}`;
     document.querySelectorAll('[data-shot]').forEach((b) => b.classList.toggle('is-active', Number(b.dataset.shot) === shot));
+    return dir;
   };
   showShot(0);
+
+  // ---------- Xem ảnh lớn ----------
+  // Ảnh to giữa màn hình trên nền tối, chuyển ảnh bằng hai nút, phím mũi tên hoặc vuốt; Esc hay bấm ra ngoài để đóng
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="viewer" id="viewer" hidden>
+      <div class="viewer__backdrop" data-viewer="close"></div>
+      <div class="viewer__box" role="dialog" aria-modal="true" aria-label="Xem ảnh lớn">
+        <div class="viewer__stage" id="viewer-stage"></div>
+        <button class="viewer__nav viewer__nav--prev" type="button" data-viewer="-1" aria-label="Ảnh trước">‹</button>
+        <button class="viewer__nav viewer__nav--next" type="button" data-viewer="1" aria-label="Ảnh sau">›</button>
+        <button class="viewer__close" type="button" data-viewer="close" aria-label="Đóng">✕</button>
+        <p class="viewer__caption" id="viewer-caption" aria-live="polite"></p>
+      </div>
+    </div>`);
+  const viewer = $('viewer');
+  const renderViewer = (dir = 0) => {
+    const s = SHOTS[shot];
+    $('viewer-stage').innerHTML = `<div class="shot shot--viewer${slide(dir)}background:${s.bg()}" role="img" aria-label="${esc(p.name)}, ${s.label.toLowerCase()}">${s.html()}</div>`;
+    $('viewer-caption').textContent = `${s.label} · ${shot + 1}/${SHOTS.length}`;
+  };
+  const stepViewer = (step) => renderViewer(showShot(shot + step));
+  let closing = null;
+  const openViewer = () => {
+    clearTimeout(closing);
+    viewer.classList.remove('is-closing');
+    renderViewer();
+    viewer.hidden = false;
+    document.body.classList.add('no-scroll');
+    viewer.querySelector('.viewer__close').focus();
+  };
+  // Đóng: chạy hiệu ứng mờ dần (xem .viewer.is-closing trong style.css) rồi mới ẩn hẳn
+  const closeViewer = () => {
+    if (viewer.hidden || viewer.classList.contains('is-closing')) return;
+    viewer.classList.add('is-closing');
+    document.body.classList.remove('no-scroll');
+    document.querySelector('.shot--main')?.focus(); // ảnh chính được vẽ lại mỗi lần đổi ảnh, nên tìm lại cái đang hiện
+    closing = setTimeout(() => {
+      viewer.hidden = true;
+      viewer.classList.remove('is-closing');
+    }, reduceMotion ? 0 : 280);
+  };
+  viewer.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-viewer]');
+    if (!t) return;
+    if (t.dataset.viewer === 'close') closeViewer();
+    else stepViewer(Number(t.dataset.viewer));
+  });
+  document.addEventListener('keydown', (e) => {
+    if (viewer.hidden || viewer.classList.contains('is-closing')) return;
+    if (e.key === 'Escape') closeViewer();
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') stepViewer(e.key === 'ArrowRight' ? 1 : -1);
+    else if (e.key === 'Tab') {
+      // Giữ phím Tab chạy vòng trong khung xem ảnh
+      const items = [...viewer.querySelectorAll('button')];
+      const i = items.indexOf(document.activeElement);
+      e.preventDefault();
+      items[(i + (e.shiftKey ? -1 : 1) + items.length) % items.length].focus();
+    }
+  });
+  let viewerTouch = null;
+  viewer.addEventListener('touchstart', (e) => { viewerTouch = e.touches[0].clientX; }, { passive: true });
+  viewer.addEventListener('touchend', (e) => {
+    if (viewerTouch === null) return;
+    const dx = e.changedTouches[0].clientX - viewerTouch;
+    if (Math.abs(dx) > 40) stepViewer(dx < 0 ? 1 : -1);
+    viewerTouch = null;
+  });
 
   // ---------- Phân loại và số lượng ----------
   let variant = '';
@@ -246,6 +319,7 @@ function renderProduct() {
     if (!t) return;
     if (t.dataset.shot) showShot(Number(t.dataset.shot));
     else if (t.dataset.shotStep) showShot(shot + Number(t.dataset.shotStep));
+    else if ('zoom' in t.dataset) openViewer();
     else if (t.dataset.variant !== undefined) {
       variant = variant === t.dataset.variant ? '' : t.dataset.variant;
       document.querySelectorAll('[data-variant]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.variant === variant)));

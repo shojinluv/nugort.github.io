@@ -77,8 +77,37 @@ document.addEventListener('click', (e) => {
     state.page = Number(t.dataset.page);
     renderGrid();
     document.querySelector('.toolbar').scrollIntoView({ block: 'center' });
+  } else if (t.id === 'cats-toggle') {
+    toggleCats(t);
   }
 });
+
+// Màn rộng: bấm tiêu đề "Danh mục" để thu gọn hay mở lại danh sách (điện thoại không có tiêu đề này).
+// Danh sách từ từ co lại (hay trải ra) và mờ dần, không biến mất cái rụp
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let catsAnim = null;
+function toggleCats(button) {
+  const open = button.getAttribute('aria-expanded') !== 'true';
+  const list = $('cats');
+  const sidebar = document.querySelector('.sidebar');
+  button.setAttribute('aria-expanded', String(open));
+  catsAnim?.cancel();
+  if (reduceMotion) {
+    sidebar.classList.toggle('is-collapsed', !open);
+    return;
+  }
+  sidebar.classList.remove('is-collapsed'); // hiện ra trước để đo chiều cao thật
+  const full = `${list.scrollHeight}px`;
+  const shown = { height: full, opacity: 1 };
+  const hidden = { height: '0px', opacity: 0 };
+  list.style.overflow = 'hidden';
+  catsAnim = list.animate(open ? [hidden, shown] : [shown, hidden], { duration: 380, easing: 'cubic-bezier(.25, .8, .25, 1)' });
+  catsAnim.onfinish = () => {
+    list.style.overflow = '';
+    sidebar.classList.toggle('is-collapsed', !open);
+    catsAnim = null;
+  };
+}
 bindCardButtons(); // nút "Thêm vào giỏ" và nút tim trên từng thẻ
 
 $('price-sort').addEventListener('change', (e) => {

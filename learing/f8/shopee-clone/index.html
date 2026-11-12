@@ -15,7 +15,12 @@
   <!-- Thanh đầu trang, chân trang và hộp đăng nhập được chèn vào từ assets/js/common.js -->
   <main class="wrap layout">
     <aside class="sidebar">
-      <h2><svg aria-hidden="true"><use href="#i-list"></use></svg> Danh mục</h2>
+      <h2>
+        <button class="sidebar__toggle" id="cats-toggle" type="button" aria-expanded="true" aria-controls="cats">
+          <svg aria-hidden="true"><use href="#i-list"></use></svg> Danh mục
+          <svg class="sidebar__chevron" aria-hidden="true"><use href="#i-back"></use></svg>
+        </button>
+      </h2>
       <ul class="cats" id="cats"></ul>
     </aside>
 

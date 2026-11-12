@@ -72,27 +72,115 @@ const HEADER = `
     </div>
   </header>`;
 
+// ---------- Chân trang ----------
+// Chợ chỉ là trang bài tập nên các mục ở chân trang không dẫn đi đâu cả: bấm vào thì hiện một câu đùa (data-tip).
+const tipLink = (text, joke) => `<li><button class="footer__link" type="button" data-tip="${esc(joke)}">${text}</button></li>`;
+const tipChip = (icon, text, joke) => `
+  <li><button class="footer__chip" type="button" data-tip="${esc(joke)}"><span aria-hidden="true">${icon}</span>${text}</button></li>`;
+
+// Mã QR giả để trang trí (quét không ra gì): ba ô vuông định vị ở góc, còn lại rải ngẫu nhiên, chừa chỗ giữa cho mèo ngồi
+function fakeQR() {
+  const N = 21;
+  let seed = 2022;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const finder = (x, y, cx, cy) => {
+    const dx = x - cx;
+    const dy = y - cy;
+    if (dx < 0 || dy < 0 || dx > 6 || dy > 6) return null;
+    const edge = dx === 0 || dy === 0 || dx === 6 || dy === 6;
+    const core = dx >= 2 && dx <= 4 && dy >= 2 && dy <= 4;
+    return edge || core;
+  };
+  let cells = '';
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      const f = finder(x, y, 0, 0) ?? finder(x, y, N - 7, 0) ?? finder(x, y, 0, N - 7);
+      const nearFinder = (x < 8 && y < 8) || (x > N - 9 && y < 8) || (x < 8 && y > N - 9);
+      const middle = Math.abs(x - 10) <= 3 && Math.abs(y - 10) <= 3;
+      const dark = f ?? (!nearFinder && !middle && rnd() < 0.5);
+      if (dark) cells += `<rect x="${x}" y="${y}" width="1" height="1"/>`;
+    }
+  }
+  return `<svg viewBox="-1 -1 ${N + 2} ${N + 2}" shape-rendering="crispEdges" aria-hidden="true"><rect x="-1" y="-1" width="${N + 2}" height="${N + 2}" fill="#fff"/><g fill="#2b2420">${cells}</g></svg>`;
+}
+
 const FOOTER = `
   <footer class="footer">
     <div class="wrap footer__cols">
-      <div>
+      <section class="footer__help">
         <h3>Chăm sóc khách hàng</h3>
-        <ul><li>Trung tâm trợ giúp</li><li>Hướng dẫn mua hàng</li><li>Đổi trả trong 7 ngày Trái Đất</li></ul>
-      </div>
-      <div>
+        <ul class="footer__links">
+          ${tipLink('Trung tâm trợ giúp', 'Trung tâm trợ giúp đang do mèo trực. Gọi to “meo ơi” là được.')}
+          ${tipLink('Hướng dẫn mua hàng', 'Bước 1: bấm Thêm vào giỏ. Bước 2: ngắm giỏ hàng. Bước 3: không có bước 3, trang demo mà 😹')}
+          ${tipLink('Đổi trả trong 7 ngày Trái Đất', '7 ngày Trái Đất thôi nhé, đừng tính theo ngày trên Sao Kim (một ngày ở đó dài 243 ngày).')}
+          ${tipLink('Bảo hành 9 kiếp', 'Món nào cũng bảo hành 9 kiếp, y như mèo.')}
+          ${tipLink('Liên hệ Chợ Nugỏrt', 'Gõ cửa khoang tàu SHOJINLUV-01. Nhớ đừng soi qua ô kính, mèo giận đó.')}
+        </ul>
+      </section>
+      <section class="footer__about">
         <h3>Về Chợ Nugỏrt</h3>
-        <ul><li>Giới thiệu</li><li>Tuyển dụng (cần người dọn lông mèo)</li><li>Điều khoản</li></ul>
-      </div>
-      <div>
+        <ul class="footer__links">
+          ${tipLink('Giới thiệu', 'Một góc chợ nhỏ trong căn phòng nhỏ, bán toàn đồ lặt vặt trong phòng.')}
+          ${tipLink('Tuyển dụng (cần người dọn lông mèo)', 'Mèo nhà mình là Sphynx, không có lông… nên việc này nhàn lắm 😼')}
+          ${tipLink('Điều khoản', 'Điều 1: Mèo luôn đúng. Điều 2: Nếu mèo sai, xem lại điều 1.')}
+          ${tipLink('Chính sách bảo mật', 'Chợ không thu thập gì cả. Giỏ hàng chỉ nằm trong trình duyệt của bạn thôi.')}
+          ${tipLink('Kênh người bán', 'Muốn bán gì ở đây thì hỏi mèo trước đã.')}
+        </ul>
+      </section>
+      <section class="footer__pay">
         <h3>Thanh toán</h3>
-        <ul><li>Tiền mặt</li><li>Chuyển khoản</li><li>Cá khô</li></ul>
-      </div>
-      <div>
-        <h3>Vận chuyển</h3>
-        <ul><li>Xe máy</li><li>Tên lửa SHOJINLUV-01</li><li>Mèo ngậm tha tới</li></ul>
-      </div>
+        <ul class="footer__chips">
+          ${tipChip('💵', 'Tiền mặt', 'Nhận cả tiền lẻ, miễn là tiền thật.')}
+          ${tipChip('🏦', 'Chuyển khoản', 'Trang demo nên chưa có số tài khoản đâu, giữ tiền lại mua trà sữa nha.')}
+          ${tipChip('🐟', 'Cá khô', 'Tỷ giá hôm nay: 1 con cá khô đổi được 1 lần mèo cho xoa đầu.')}
+          ${tipChip('🥫', 'Pate mèo', 'Đồng tiền mạnh nhất trong căn phòng nhỏ.')}
+          ${tipChip('☀️', 'Năng lượng mặt trời', 'Tàu có pin mặt trời, trả bằng nắng cũng được. Nhưng trong bóng Trái Đất thì nợ nha.')}
+          ${tipChip('🐾', 'Một cái vuốt mèo', 'Thanh toán xong là có vết.')}
+        </ul>
+        <h3 class="footer__sub">Đơn vị vận chuyển</h3>
+        <ul class="footer__chips">
+          ${tipChip('🛵', 'Xe máy', 'Xe máy chỉ giao quanh hòn đảo, tức là trong vòng chục mét.')}
+          ${tipChip('🚀', 'Tên lửa SHOJINLUV-01', 'Chậm nhất 3 năm ánh sáng. Muốn nhanh hơn thì thêm phí cá khô.')}
+          ${tipChip('🐋', 'Cá voi bay', 'Mẹ con cá voi bơi ngang biển mây chừng một hai phút một lần, ra mép đảo đứng đợi nhé.')}
+          ${tipChip('🐬', 'Đàn cá heo', 'Giao siêu tốc, chỉ có điều hàng tới nơi hơi ướt mây.')}
+          ${tipChip('🐈', 'Mèo ngậm tha tới', 'Mèo tha tận tay, nhưng hay đánh rơi giữa đường để đuổi bướm.')}
+        </ul>
+      </section>
+      <section class="footer__app">
+        <h3>Tải ứng dụng Chợ Nugỏrt</h3>
+        <div class="footer__app-row">
+          <button class="footer__qr" type="button" data-tip="App chưa ra đâu, mèo vẫn đang viết code 😹" aria-label="Mã QR tải ứng dụng (chỉ để trang trí)">
+            ${fakeQR()}<span aria-hidden="true">🐱</span>
+          </button>
+          <ul class="footer__stores">
+            ${tipChip('🔴', 'Sao Hỏa Store', 'Sắp lên kệ… khi nào mèo ngủ dậy.')}
+            ${tipChip('🌙', 'Mặt Trăng Play', 'Sắp lên kệ… khi nào mèo ngủ dậy.')}
+            ${tipChip('🛸', 'UFO Apps', 'Người ngoài hành tinh đặt trước 3 bản rồi đó.')}
+          </ul>
+        </div>
+      </section>
     </div>
-    <p class="footer__note wrap">Đây là trang bài tập giao diện của Shojinluv. Sản phẩm, giá cả, đánh giá và đơn hàng đều là bịa, không mua bán thật.</p>
+
+    <div class="wrap footer__bottom">
+      <p>© ${new Date().getFullYear()} Chợ Nugỏrt. Một góc chợ trong căn phòng nhỏ của Shojinluv.</p>
+      <p class="footer__regions">Quốc gia &amp; khu vực:
+        <span>Việt Nam</span> <span>Sao Hỏa</span> <span>Mặt Trăng</span> <span>Tàu SHOJINLUV-01</span> <span>Chiều không gian khác</span>
+      </p>
+    </div>
+
+    <div class="footer__legal">
+      <ul class="footer__policies">
+        ${tipLink('Chính sách bảo mật', 'Chợ không thu thập gì cả. Giỏ hàng chỉ nằm trong trình duyệt của bạn thôi.')}
+        ${tipLink('Quy chế hoạt động', 'Mở cửa 24/7, trừ lúc mèo ngủ (tức là gần như cả ngày).')}
+        ${tipLink('Chính sách vận chuyển', 'Giao tới mọi nơi trong hệ Mặt Trời. Sao Diêm Vương thì tính phí hành tinh lùn.')}
+        ${tipLink('Chính sách trả hàng và hoàn tiền', 'Hoàn tiền bằng cá khô, mèo duyệt trong 3 đến 5 giấc ngủ.')}
+      </ul>
+      <p class="footer__company">
+        Chợ Nugỏrt · Địa chỉ: ghế lười cạnh cửa sổ, căn phòng nhỏ trên hòn đảo bay, chiều không gian khác ·
+        Chịu trách nhiệm nội dung: mèo Sphynx (đang ngủ)
+      </p>
+      <p class="footer__note">Đây là trang bài tập giao diện của Shojinluv. Sản phẩm, giá cả, đánh giá và đơn hàng đều là bịa, không mua bán thật.</p>
+    </div>
   </footer>`;
 
 const MODAL = `
@@ -129,12 +217,21 @@ export function mountShell() {
 
 // ---------- Thông báo nhỏ ----------
 let toastTimer;
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 export function toast(text) {
   const el = $('toast');
+  const wasShown = el.classList.contains('is-show');
   el.textContent = text;
   el.classList.add('is-show');
+  // Đang hiện mà đổi câu: khẽ nhún một cái, chữ mới hiện dần, thay vì nhảy chữ cái rụp
+  if (wasShown && !reduceMotion) {
+    el.animate([
+      { opacity: 0.35, transform: 'translate(-50%, 4px) scale(0.97)' },
+      { opacity: 1, transform: 'translate(-50%, 0) scale(1)' },
+    ], { duration: 320, easing: 'cubic-bezier(.25, .8, .25, 1)' });
+  }
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('is-show'), 2400);
+  toastTimer = setTimeout(() => el.classList.remove('is-show'), Math.max(2400, text.length * 55)); // câu dài thì hiện lâu hơn cho kịp đọc
 }
 
 // ---------- Giỏ hàng ----------
@@ -292,6 +389,8 @@ function bindShell() {
       renderCart();
     } else if (t.id === 'cart-btn') {
       toggleCart();
+    } else if (t.dataset.tip) {
+      toast(t.dataset.tip); // các mục ở chân trang
     } else if (t.id === 'checkout') {
       toast('Trang demo thôi, chưa thanh toán thật được đâu nha');
     } else if (t.dataset.auth) {
