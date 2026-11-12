@@ -991,7 +991,38 @@ function buildAirlock(room, world) {
   });
   const stripeMat = new THREE.MeshStandardMaterial({ map: stripes, roughness: 0.6 });
   const lampMat = new THREE.MeshStandardMaterial({ color: '#2a2f38', emissive: '#ff4d4d', emissiveIntensity: 0 });
-  const keyMat = new THREE.MeshStandardMaterial({ color: '#1c2a22', emissive: '#3dff9a', emissiveIntensity: 0 });
+  // Ô quét dấu chân mèo để mở cửa: mặt kính tối, dấu chân và chữ phát sáng theo màu đèn báo
+  const scanFace = canvasTexture(256, 384, (ctx, w) => {
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, w, 384);
+    ctx.fillStyle = '#1e1e1e'; // lưới chấm mờ trên mặt kính
+    for (let y = 40; y < 260; y += 16) for (let x = 44; x < 220; x += 16) ctx.fillRect(x, y, 3, 3);
+    ctx.strokeStyle = '#6a6a6a';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.roundRect(28, 24, w - 56, 240, 26);
+    ctx.stroke();
+    // Dấu chân: một nệm lớn hình tam giác bo tròn và bốn ngón
+    ctx.fillStyle = '#e8e8e8';
+    ctx.beginPath();
+    ctx.ellipse(128, 182, 50, 40, 0, 0, Math.PI * 2);
+    ctx.fill();
+    for (const [x, y, r] of [[70, 128, 19], [104, 92, 21], [152, 92, 21], [186, 128, 19]]) {
+      ctx.beginPath();
+      ctx.ellipse(x, y, r * 0.85, r, (x - 128) / 160, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#9a9a9a';
+    ctx.textAlign = 'center';
+    ctx.font = '800 25px "Be Vietnam Pro", sans-serif';
+    ctx.fillText('QUÉT CHÂN MÈO', 128, 318);
+    ctx.font = '600 18px "Be Vietnam Pro", sans-serif';
+    ctx.fillStyle = '#5a5a5a';
+    ctx.fillText('đặt cả bàn chân lên', 128, 350);
+  });
+  const keyMat = new THREE.MeshStandardMaterial({ color: '#141b1e', roughness: 0.25, emissive: '#3dff9a', emissiveMap: scanFace, emissiveIntensity: 1.2 });
+  const scanLineMat = new THREE.MeshBasicMaterial({ color: '#3dff9a', transparent: true, opacity: 0.75, depthWrite: false });
+  let scanLine = null; // vệt sáng quét lên quét xuống trên ô kính
   // Ô kính tròn trong suốt: tường, khung và cánh cửa đều khoét lỗ nên nhìn xuyên được từ cả hai phía
   const glass = new THREE.MeshStandardMaterial({ color: '#bfe0ff', transparent: true, opacity: 0.16, roughness: 0.05, metalness: 0.2, depthWrite: false });
   // Tấm phẳng bo góc có khoét một lỗ tròn (holeY: độ cao tâm lỗ so với tâm tấm), dày dần từ z = 0
@@ -1039,8 +1070,10 @@ function buildAirlock(room, world) {
     door.add(at(box(0.6, 0.035, 0.13, dark, 0.012), 0, 3.97, 0.105));       // mái che
     for (const x of [-0.29, 0.29]) door.add(at(cylinder(0.018, 0.018, 0.02, metal, 8), x, 3.86, 0.065, Math.PI / 2)); // đinh vít
     if (outside) {
-      door.add(at(box(0.3, 0.44, 0.07, dark, 0.02), -1.65, 1.6, 0.035));    // bảng phím
-      door.add(at(box(0.2, 0.1, 0.02, keyMat, 0), -1.65, 1.72, 0.075));
+      door.add(at(box(0.36, 0.52, 0.06, dark, 0.025), -1.65, 1.6, 0.03));   // vỏ ô quét chân mèo
+      door.add(at(new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.45), keyMat), -1.65, 1.6, 0.0605));
+      scanLine = decoration(at(new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.01), scanLineMat), -1.65, 1.656, 0.063));
+      door.add(scanLine);
       door.add(at(cylinder(0.035, 0.035, 1.5, metal, 10), -1.1, 1.75, 0.16)); // tay vịn
       door.add(at(box(0.07, 0.07, 0.16, metal, 0.01), -1.1, 2.45, 0.08));
       door.add(at(box(0.07, 0.07, 0.16, metal, 0.01), -1.1, 1.05, 0.08));
@@ -1095,7 +1128,6 @@ function buildAirlock(room, world) {
   out.traverse((o) => { o.userData.noPick = true; });
 
   liner.scale.y = 0.64; // dài vừa tới mặt kính ở hai mặt cửa
-  keyMat.emissiveIntensity = 1.2;
 
   world.updaters.push((t) => {
     const s = world.space;
@@ -1104,6 +1136,12 @@ function buildAirlock(room, world) {
     const settled = s > 0.995 || s < 0.005;
     lampMat.emissive.set(settled ? '#3dff9a' : '#ff4d4d');
     lampMat.emissiveIntensity = settled ? 1.4 : (Math.sin(t * 9) > 0 ? 1.8 : 0.15);
+    // Ô quét chân mèo cùng màu đèn báo: xanh là mở được, đỏ là cửa đang khoá vì tàu đang bay
+    keyMat.emissive.set(settled ? '#3dff9a' : '#ff4d4d');
+    keyMat.emissiveIntensity = 1 + 0.35 * Math.sin(t * 2);
+    scanLineMat.color.copy(keyMat.emissive);
+    scanLine.position.y = 1.656 + Math.sin(t * 1.6) * 0.115;
+    scanLineMat.opacity = settled ? 0.75 : 0;
   });
 }
 
