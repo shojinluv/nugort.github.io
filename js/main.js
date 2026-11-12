@@ -330,8 +330,7 @@ function startCountdown(unlock) {
     grid.append(cell);
     return num;
   });
-  const date = Object.assign(document.createElement('p'), { className: 'countdown__date', textContent: unlock.text });
-  ui.panelCountdown.replaceChildren(label, grid, date);
+  ui.panelCountdown.replaceChildren(label, grid);
   const tick = () => {
     const left = timeLeft(end);
     label.textContent = left ? 'Mây sẽ tan sau' : 'Đã tới ngày hẹn ☀️';

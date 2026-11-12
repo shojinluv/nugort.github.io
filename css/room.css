@@ -436,12 +436,6 @@ body.is-night .progress.is-done {
   font-variant-numeric: tabular-nums;
 }
 
-.countdown__date {
-  margin: 10px 0 0;
-  font-size: 13px;
-  color: var(--ink-soft);
-}
-
 .panel__links {
   display: flex;
   flex-wrap: wrap;
