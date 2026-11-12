@@ -513,7 +513,10 @@ function buildCloudSea(realm, world) {
   realm.add(plane);
 
   // Những đám mây bông nổi trên biển mây: nhiều cục tròn ép dẹt, gom chung một lần vẽ
-  const puffMat = new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: '#ffffff', emissiveIntensity: 0.35, roughness: 1, transparent: true });
+  // Vẽ như vật đặc (chỉ chuyển sang trong suốt lúc mờ dần khi cất cánh): để vẽ trong suốt thì máy phải tự đoán
+  // mây với thác nước cái nào xa hơn, có lúc đoán sai làm mây phía sau phủ lên dòng thác
+  const puffMat = new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: '#ffffff', emissiveIntensity: 0.35, roughness: 1 });
+  const fadePuffs = fader([puffMat]);
   const puffs = [];
   for (let i = 0; i < 22; i++) {
     const a = rand() * Math.PI * 2;
@@ -543,7 +546,7 @@ function buildCloudSea(realm, world) {
       material.uniforms.gloom.value = world.rain;
       material.uniforms.sunXZ.value.set(-world.sunNow.x, -world.sunNow.z).normalize();
       puffMat.emissiveIntensity = (0.35 * (1 - n) + 0.03) * (1 - 0.75 * world.rain); // ban đêm, trời mưa thì mây tối lại
-      puffMat.opacity = keep;
+      fadePuffs(keep);
       clouds.position.x = Math.sin(t * 0.02) * 2 * calm; // cả đàn mây dạt qua dạt lại thật chậm
     },
   };

@@ -798,11 +798,11 @@ function buildPond(island, world) {
     transparent: true,
     depthWrite: false,
   });
-  // Thác đổ vào khoảng không nên bụi nước tung ra thành một đám hơi nước lớn quanh chân thác:
-  // đám hơi nước càng rộng thì càng thấy được một khúc vòng cung cầu vồng dài
-  const bow = decoration(new THREE.Mesh(new THREE.PlaneGeometry(16, 16), bowMat));
-  bow.position.copy(u).multiplyScalar(fallAt(5.5));
-  bow.position.y = Y0 - 5.5;
+  // Đám bụi nước chỉ bám quanh cột nước ở khúc dưới thác (hẹp ngang, dài theo chiều rơi), nên cầu vồng ở đây
+  // chỉ là một khúc nhỏ lấp lánh trong bụi nước, như ngoài đời. Cầu vồng lớn trên nền trời sau mưa thì xem sky.js
+  const bow = decoration(new THREE.Mesh(new THREE.PlaneGeometry(6, 10), bowMat));
+  bow.position.copy(u).multiplyScalar(fallAt(5));
+  bow.position.y = Y0 - 5;
   bow.renderOrder = 2;
   // Tấm hơi nước luôn quay mặt về phía camera
   bow.onBeforeRender = (renderer, scene, camera) => {
@@ -811,8 +811,11 @@ function buildPond(island, world) {
   };
   island.add(bow);
 
+  // Bụi nước lăn tăn ở chân thác: giữ cỡ nhỏ cho ra bụi nước, không phình to như mây (to quá thì trông như mây bị thủng).
+  // Vẽ sau cầu vồng để hơi nước phủ mờ lên cầu vồng phía sau, chứ không bị cầu vồng vẽ đè lên
   const mists = [0, 1, 2, 3, 4].map((i) => {
     const s = decoration(new THREE.Sprite(new THREE.SpriteMaterial({ map: mistTex, transparent: true, depthWrite: false, opacity: 0.5 })));
+    s.renderOrder = 3;
     const drop = FALL * 0.65 + i * 0.35; // hơi nước bốc lên quanh chỗ thác bắt đầu tan
     s.position.copy(u).multiplyScalar(fallAt(drop) + (i - 2) * 0.3).addScaledVector(w, (i % 2 ? 1 : -1) * 0.4 * (i > 0));
     s.position.y = Y0 - drop;
@@ -822,7 +825,8 @@ function buildPond(island, world) {
 
   return {
     update(t, dt, calm, night, space) {
-      bowMat.uniforms.strength.value = (1 - night) * (1 - space) * 0.6;
+      // Cầu vồng cần nắng chiếu thẳng: ban đêm, ngoài vũ trụ, hay lúc mưa (mây mưa che Mặt Trời) thì không có
+      bowMat.uniforms.strength.value = (1 - night) * (1 - space) * (1 - world.rain) * 0.5;
       bow.visible = bowMat.uniforms.strength.value > 0.01;
       bodyTex.offset.y += dt * 0.6 * calm;
       coreTex.offset.y += dt * 0.75 * calm;
@@ -832,8 +836,8 @@ function buildPond(island, world) {
       });
       mists.forEach((s, i) => {
         const k = (t * 0.4 + i / mists.length) % 1;
-        s.scale.setScalar(1.4 + k * 2.6);
-        s.material.opacity = 0.45 * Math.sin(k * Math.PI);
+        s.scale.setScalar(0.9 + k * 1.5);
+        s.material.opacity = 0.38 * Math.sin(k * Math.PI);
       });
 
       // Cá bơi vòng quanh ao, lúc gần lúc xa tâm ao. Mỗi con buồn ngủ nhanh chậm khác nhau:
