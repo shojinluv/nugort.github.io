@@ -172,113 +172,14 @@ function buildWindow(room, world) {
   }
   room.add(at(cylinder(0.035, 0.035, w + 2, '#c98f5a', 12), cx, 4.95, -4.8, 0, 0, Math.PI / 2)); // thanh treo rèm
 
-  // Bầu trời: hai tấm hình phẳng đặt sau bức tường. Ban đêm thì tấm "trời đêm" hiện dần lên.
-  // Khi bay ra vũ trụ thì cả hai tan đi, nhìn qua cửa sổ sẽ thấy sao và Trái Đất thật (xem space.js).
-  const geometry = new THREE.PlaneGeometry(6, 3.75);
-  const dayMat = new THREE.MeshBasicMaterial({ map: canvasTexture(640, 400, drawDaySky), toneMapped: false, transparent: true });
-  const nightMat = new THREE.MeshBasicMaterial({ map: canvasTexture(640, 400, drawNightSky), toneMapped: false, transparent: true, opacity: 0 });
-  const day = new THREE.Mesh(geometry, dayMat);
-  const night = new THREE.Mesh(geometry, nightMat);
-  // Đặt sát ngay sau lưng tường (mặt sau tường ở z = -5.3). Để xa hơn thì khi xoay camera sang ngang,
-  // mép tấm bầu trời sẽ thò ra khỏi cạnh tường thành một dải xanh lơ lửng.
-  room.add(decoration(at(day, cx, cy, -5.31)), decoration(at(night, cx, cy, -5.305)));
-  world.nightFns.push((n) => {
-    const keep = 1 - world.space;
-    dayMat.opacity = keep;
-    nightMat.opacity = n * keep;
-    day.visible = keep > 0.001;
-    night.visible = n * keep > 0.001;
+  // Ô kính trong veo: nhìn xuyên ra đúng cảnh thật phía sau tường (mép đảo, bầu trời, ngoài vũ trụ là sao và Mặt Trời)
+  const glass = new THREE.MeshStandardMaterial({
+    color: '#dff1ff', transparent: true, opacity: 0.1, roughness: 0.05, metalness: 0.2, depthWrite: false, side: THREE.DoubleSide,
   });
-}
-
-// Phần trời nhìn thấy qua cửa sổ nằm khoảng x: 160–480, y: 80–320 trên tấm canvas 640×400
-function drawDaySky(ctx, w, h) {
-  const sky = ctx.createLinearGradient(0, 0, 0, h);
-  sky.addColorStop(0, '#6cc0f2');
-  sky.addColorStop(1, '#dff4ff');
-  ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, w, h);
-
-  // Mặt trời có quầng sáng
-  const glow = ctx.createRadialGradient(400, 130, 10, 400, 130, 110);
-  glow.addColorStop(0, 'rgba(255, 244, 190, 0.95)');
-  glow.addColorStop(1, 'rgba(255, 244, 190, 0)');
-  ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, w, h);
-  ctx.fillStyle = '#fff6cc';
-  ctx.beginPath();
-  ctx.arc(400, 130, 30, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Mây
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-  cloud(ctx, 235, 150, 1);
-  cloud(ctx, 330, 100, 0.65);
-
-  // Đồi xa và đồi gần
-  hills(ctx, w, h, 255, 22, 0.018, '#a9dca2');
-  hills(ctx, w, h, 285, 16, 0.025, '#7cc48a');
-  ctx.fillStyle = '#5ca46e';
-  for (const [x, y] of [[200, 262], [222, 266], [430, 270], [455, 266]]) {
-    ctx.beginPath();
-    ctx.arc(x, y, 9, 0, Math.PI * 2);
-    ctx.fill();
-  }
-}
-
-function drawNightSky(ctx, w, h) {
-  const sky = ctx.createLinearGradient(0, 0, 0, h);
-  sky.addColorStop(0, '#0b1240');
-  sky.addColorStop(1, '#2c3477');
-  ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, w, h);
-
-  // Sao
-  for (let i = 0; i < 140; i++) {
-    ctx.fillStyle = `rgba(255, 255, 240, ${0.4 + random() * 0.6})`;
-    ctx.beginPath();
-    ctx.arc(random() * w, random() * h * 0.7, random() * 1.6 + 0.4, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // Trăng lưỡi liềm: vẽ trên một canvas riêng rồi "khoét" bớt một hình tròn
-  const moon = document.createElement('canvas');
-  moon.width = moon.height = 80;
-  const m = moon.getContext('2d');
-  m.fillStyle = '#fff6d6';
-  m.shadowColor = 'rgba(255, 246, 214, 0.8)';
-  m.shadowBlur = 16;
-  m.beginPath();
-  m.arc(40, 40, 24, 0, Math.PI * 2);
-  m.fill();
-  m.globalCompositeOperation = 'destination-out';
-  m.beginPath();
-  m.arc(52, 32, 22, 0, Math.PI * 2);
-  m.fill();
-  ctx.drawImage(moon, 230, 90);
-
-  // Đồi tối và vài ô cửa sổ nhà ai còn sáng đèn
-  hills(ctx, w, h, 255, 22, 0.018, '#232c5c');
-  hills(ctx, w, h, 285, 16, 0.025, '#171e45');
-  ctx.fillStyle = '#ffd77a';
-  for (const [x, y] of [[205, 258], [214, 258], [420, 266], [452, 262], [461, 262]]) ctx.fillRect(x, y, 5, 6);
-}
-
-function cloud(ctx, x, y, s) {
-  for (const [dx, dy, r] of [[0, 0, 26], [28, -12, 30], [58, 0, 24], [30, 8, 26]]) {
-    ctx.beginPath();
-    ctx.arc(x + dx * s, y + dy * s, r * s, 0, Math.PI * 2);
-    ctx.fill();
-  }
-}
-
-function hills(ctx, w, h, base, amp, freq, color) {
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.moveTo(0, h);
-  for (let x = 0; x <= w; x += 8) ctx.lineTo(x, base - Math.sin(x * freq + base) * amp);
-  ctx.lineTo(w, h);
-  ctx.fill();
+  room.add(decoration(at(new THREE.Mesh(new THREE.PlaneGeometry(w, h), glass), cx, cy, -5.2)));
+  // Bức tranh trời đêm vẽ sau cửa sổ ngày trước từng dùng 560 số ngẫu nhiên. Bỏ qua đúng chừng ấy số,
+  // để sách trên kệ, lá cây… (lấy số ngẫu nhiên tiếp theo trong cùng một chuỗi) vẫn y như cũ
+  for (let i = 0; i < 560; i++) random();
 }
 
 // ---------- Tia nắng xuyên qua cửa sổ + bụi lấp lánh ----------

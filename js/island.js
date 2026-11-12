@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { mat, cylinder, sphere, at, canvasTexture, decoration } from './helpers.js';
 import { PAD, GROUND_SCALE, LAUNCH_H0, launchPose, newLaunchPose } from './space.js';
+import { SUN_DIR } from './room.js';
 
 // Số ngẫu nhiên riêng của hòn đảo (có hạt giống, lần nào tải trang cũng giống nhau)
 let seed = 4242;
@@ -61,6 +62,8 @@ function freeSpot(x, z, margin = 0.6) {
   if (r > edge(Math.atan2(z, x)) - margin) return false;
   if (Math.abs(x) < FLOOR && Math.abs(z) < FLOOR) return false;
   if (Math.hypot(x - PX, z - PZ) < POND.size + 0.5) return false;
+  // Lòng suối chảy từ ao thẳng ra mép đảo
+  if (x * Math.cos(POND.a) + z * Math.sin(POND.a) > POND.r && Math.abs(z * Math.cos(POND.a) - x * Math.sin(POND.a)) < 0.8) return false;
   if (Math.abs(x - 1.6) < 0.7 && z > FLOOR) return false;
   if (Math.hypot(x - LANTERN[0], z - LANTERN[1]) < 0.5 || Math.hypot(x - SIGN[0], z - SIGN[1]) < 0.8) return false;
   return true;
@@ -99,7 +102,7 @@ export function buildIsland(world) {
     island.scale.setScalar(size);
 
     const n = world.night;
-    water.update(t, dt, calm, world.night);
+    water.update(t, dt, calm, world.night, world.space);
     lantern.update(n, t);
     glowShrooms.forEach((m, i) => { m.emissiveIntensity = n * (1.3 + 0.4 * Math.sin(t * 1.5 + i * 2)); });
     rocks.forEach((r, i) => { r.position.y = r.userData.y + Math.sin(t * 0.6 + i * 2.1) * 0.25 * calm; r.rotation.y = t * 0.1 * (i + 1) * calm; });
@@ -566,16 +569,20 @@ function buildPond(island) {
   // theo đường parabol như nước thật. Càng rơi càng nhanh (vệt nước kéo dài ra), loe rộng và tan dần thành hơi nước.
   const u = new THREE.Vector3(Math.cos(POND.a), 0, Math.sin(POND.a));  // hướng nước chảy, từ ao ra ngoài
   const w = new THREE.Vector3(-Math.sin(POND.a), 0, Math.cos(POND.a)); // hướng ngang qua dòng nước
-  const start = POND.r + POND.size * 0.8;
+  const start = POND.r + POND.size * 0.5; // đầu suối nằm trong lòng ao, chồng lên mặt nước ao cho liền mạch
   const lip = edge(POND.a) + 0.2; // chỗ nước rời mép đảo (vượt qua mép cỏ bo tròn một chút)
   const SPEED = 0.8; // tốc độ nước chảy trên mặt đảo
   const G = 4;       // "trọng lực", nhẹ hơn thật cho thác rơi thong thả, dễ ngắm
   const FALL = 7;    // rơi sâu chừng này thì tan hết thành hơi nước
-  const Y0 = -0.09;  // mặt nước suối
+  const Y0 = -0.085; // mặt nước suối ở chỗ vắt qua mép đảo
   const T = Math.sqrt((2 * FALL) / G);
-  // Đường giữa dòng nước: [khoảng cách từ tâm đảo, độ cao, tốc độ chảy]
+  // Đường giữa dòng nước: [khoảng cách từ tâm đảo, độ cao, tốc độ chảy].
+  // Suối bắt đầu ngay trên mặt ao (hiện dần lên từ giữa ao) rồi thoai thoải thấp dần ra tới mép đảo
   const line = [];
-  for (let i = 0; i <= 6; i++) line.push([start + ((lip - start) * i) / 6, Y0, SPEED]);
+  for (let i = 0; i <= 8; i++) {
+    const f = i / 8;
+    line.push([start + (lip - start) * f, THREE.MathUtils.lerp(POND_Y + 0.004, Y0, f * f * (3 - 2 * f)), SPEED]);
+  }
   for (let i = 1; i <= 40; i++) {
     const t = T * (i / 40) ** 1.5; // lấy mẫu dày ở chỗ uốn cong qua mép
     line.push([lip + SPEED * t, Y0 - 0.5 * G * t * t, Math.hypot(SPEED, G * t)]);
@@ -604,10 +611,13 @@ function buildPond(island) {
       const back = line[Math.max(i - 1, 0)];
       dir.copy(u).multiplyScalar(next[0] - back[0]).setY(next[1] - back[1]).normalize();
       n.crossVectors(w, dir); // hướng lên khi nước chảy ngang, hướng ra ngoài khi nước rơi
-      const drop = Y0 - y;
-      const width = 0.9 * widthScale * (1 + 0.03 * drop);
+      const drop = Math.max(0, Y0 - y);
+      // Cửa ao rộng rồi thu hẹp dần thành lòng suối; khi rơi thì loe ra
+      const mouth = 1 + 0.5 * (1 - THREE.MathUtils.smoothstep(d, start, start + 1.4));
+      const width = 0.9 * widthScale * mouth * (1 + 0.03 * drop);
       const bulge = Math.min(1, drop / 0.6) * 0.3;
-      const fade = 1 - THREE.MathUtils.smoothstep(drop, FALL * 0.45, FALL);
+      // Hiện dần lên từ mặt ao ở đầu suối, tan dần thành hơi nước ở cuối thác
+      const fade = THREE.MathUtils.smoothstep(d, start, start + 0.4) * (1 - THREE.MathUtils.smoothstep(drop, FALL * 0.45, FALL));
       for (let j = 0; j < M; j++) {
         const k = (j / (M - 1)) * 2 - 1; // -1 … 1: từ mép này sang mép kia
         p.copy(C).addScaledVector(w, (k * width) / 2).addScaledVector(n, (1 - k * k) * width * bulge + lift);
@@ -660,6 +670,58 @@ function buildPond(island) {
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, 64, 64);
   });
+  // Cầu vồng trong làn hơi nước dưới chân thác. Cầu vồng thật chỉ hiện khi mặt trời ở sau lưng người xem,
+  // ở những giọt nước mà tia nhìn lệch chừng 42° so với hướng tia nắng (cầu vồng phụ mờ hơn ở chừng 51°, màu đảo ngược).
+  // Từng điểm trên tấm hơi nước tự tính góc đó theo vị trí camera, nên cầu vồng chỉ hiện khi xoay sang phía
+  // có mặt trời sau lưng (phía sau, bên trái hòn đảo) và cong đúng như cầu vồng thật. Tối hay ra vũ trụ thì không có.
+  const bowMat = new THREE.ShaderMaterial({
+    uniforms: { antiSun: { value: SUN_DIR.clone().normalize() }, strength: { value: 0 } },
+    vertexShader: /* glsl */ `
+      varying vec3 vWorld;
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        vec4 w = modelMatrix * vec4(position, 1.0);
+        vWorld = w.xyz;
+        gl_Position = projectionMatrix * viewMatrix * w;
+      }`,
+    fragmentShader: /* glsl */ `
+      uniform vec3 antiSun;
+      uniform float strength;
+      varying vec3 vWorld;
+      varying vec2 vUv;
+      vec3 hue(float h) { // 0 = đỏ, 1/3 = lục, 2/3 = lam, 0,78 = tím
+        return clamp(abs(fract(h + vec3(0.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0) - 1.0, 0.0, 1.0);
+      }
+      float band(float a, float lo, float hi) {
+        return smoothstep(lo - 0.8, lo + 0.6, a) * (1.0 - smoothstep(hi - 0.6, hi + 0.8, a));
+      }
+      void main() {
+        // Góc giữa tia nhìn tới điểm này và hướng tia nắng (đo từ điểm đối diện mặt trời)
+        float a = degrees(acos(clamp(dot(normalize(vWorld - cameraPosition), antiSun), -1.0, 1.0)));
+        float p = band(a, 39.0, 44.0);                  // cầu vồng chính: tím ở trong, đỏ ở ngoài
+        vec3 c1 = hue(mix(0.78, 0.0, clamp((a - 39.0) / 5.0, 0.0, 1.0)));
+        float s = band(a, 50.0, 54.0) * 0.35;           // cầu vồng phụ: đỏ ở trong, tím ở ngoài
+        vec3 c2 = hue(mix(0.0, 0.78, clamp((a - 50.0) / 4.0, 0.0, 1.0)));
+        float w = p + s;
+        vec3 col = mix((c1 * p + c2 * s) / max(w, 1e-3), vec3(1.0), 0.3); // pha chút trắng cho màu dịu như sau mưa
+        float mist = 1.0 - smoothstep(0.3, 1.0, length(vUv - 0.5) * 2.0); // chỉ có ở chỗ có hơi nước
+        gl_FragColor = vec4(col, w * mist * strength);
+      }`,
+    transparent: true,
+    depthWrite: false,
+  });
+  const bow = decoration(new THREE.Mesh(new THREE.PlaneGeometry(6, 6), bowMat));
+  bow.position.copy(u).multiplyScalar(fallAt(4.5));
+  bow.position.y = Y0 - 4.5;
+  bow.renderOrder = 2;
+  // Tấm hơi nước luôn quay mặt về phía camera
+  bow.onBeforeRender = (renderer, scene, camera) => {
+    bow.quaternion.copy(camera.quaternion);
+    bow.updateMatrixWorld();
+  };
+  island.add(bow);
+
   const mists = [0, 1, 2].map((i) => {
     const s = decoration(new THREE.Sprite(new THREE.SpriteMaterial({ map: mistTex, transparent: true, depthWrite: false, opacity: 0.5 })));
     const drop = FALL * 0.72 + i * 0.4; // hơi nước bốc lên quanh chỗ thác bắt đầu tan
@@ -670,7 +732,9 @@ function buildPond(island) {
   });
 
   return {
-    update(t, dt, calm, night) {
+    update(t, dt, calm, night, space) {
+      bowMat.uniforms.strength.value = (1 - night) * (1 - space) * 0.55;
+      bow.visible = bowMat.uniforms.strength.value > 0.01;
       bodyTex.offset.y += dt * 0.6 * calm;
       coreTex.offset.y += dt * 0.75 * calm;
       foams.forEach((f, i) => {
