@@ -93,7 +93,10 @@ export function buildIsland(world) {
   world.updaters.push((t, dt) => {
     const calm = world.reduceMotion ? 0 : 1;
     const { lift, h, k, q, dir } = launchPose(world.spaceProgress, pose);
-    const size = (k / GROUND_SCALE) * (1 - THREE.MathUtils.smoothstep(lift, 0.35, 0.65));
+    // Lúc đảo còn ở gần thì giữ nguyên cỡ: cây cao hơn sàn nhà, thu nhỏ sớm thì cây bị kéo dồn vào giữa
+    // và đâm thẳng vào phòng. Đảo xuống đủ xa rồi mới thu dần theo Trái Đất, sau đó nhỏ dần tới khuất hẳn
+    const shrink = THREE.MathUtils.lerp(1, k / GROUND_SCALE, THREE.MathUtils.smoothstep(lift, 0.4, 0.6));
+    const size = shrink * (1 - THREE.MathUtils.smoothstep(lift, 0.45, 0.75));
     island.visible = size > 0.002;
     if (!island.visible) return;
     // Mặt cỏ nằm thấp hơn gốc toạ độ 0,14; nhấc cả đảo lên 0,12 cho mặt cỏ sát ngay dưới đáy sàn nhà

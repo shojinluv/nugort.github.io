@@ -329,6 +329,7 @@ const pickOne = (list) => list[Math.floor(Math.random() * list.length)];
 // ===== 10b. Mèo bắt quả tang ai soi qua ô kính cửa khoang =====
 // Camera đứng ngoài tường trái, và đường nhìn từ camera tới mèo chui lọt qua lỗ ô kính
 // thì coi như đang soi. Soi quá nửa giây là mèo quay mặt ra cửa và lên tiếng.
+// Ở Trái Đất hay ngoài vũ trụ đều vậy, vì cửa khoang lúc nào cũng có.
 const peekPoint = new THREE.Vector3();
 let peekTime = 0;
 let peekCooldown = 0;
@@ -337,7 +338,7 @@ world.updaters.push((t, dt) => {
   const cat = world.clickables.cat;
   const eye = camera.position;
   let peeking = false;
-  if (world.space > 0.95 && eye.x < -5.6) {
+  if (eye.x < -5.6) {
     peekPoint.set(cat.position.x, cat.position.y + 0.3, cat.position.z);
     const k = (-5.15 - eye.x) / (peekPoint.x - eye.x); // chỗ đường nhìn cắt qua giữa bề dày tường
     const y = eye.y + (peekPoint.y - eye.y) * k;
