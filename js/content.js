@@ -89,9 +89,8 @@ export const content = {
     ],
     links: [{ text: 'Ghé Chợ Nugỏrt', href: 'learing/f8/shopee-clone/index.html' }],
   },
-  // locked: true → nội dung bị mây mù che phủ, ở giữa có ổ khoá (vùng cấm).
-  // Mấy dòng body bên dưới chỉ là chữ giữ chỗ cho có hình dáng sau lớp mây, đừng viết bí mật thật vào đây:
-  // ai mở mã nguồn trang cũng đọc được.
+  // locked: true → vùng cấm: mây mù trôi làm nền, ổ khoá ở trên, mấy dòng body hiện rõ trên lớp mây.
+  // Đó chỉ là lời úp mở, đừng viết bí mật thật vào đây: ai mở mã nguồn trang cũng đọc được.
   poster: {
     tag: 'Vùng cấm',
     title: 'Di sản của Trâm Anh',

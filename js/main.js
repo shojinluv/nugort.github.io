@@ -261,8 +261,7 @@ function openPanel(id, obj) {
     ui.panelImg.alt = `Ảnh chụp trang ${c.title}`;
   }
   ui.panelBody.replaceChildren(...c.body.map((text) => Object.assign(document.createElement('p'), { textContent: text })));
-  ui.panel.classList.toggle('is-locked', Boolean(c.locked)); // vùng cấm: phủ mây mù và ổ khoá lên nội dung (xem room.css)
-  ui.panelBody.setAttribute('aria-hidden', String(Boolean(c.locked)));
+  ui.panel.classList.toggle('is-locked', Boolean(c.locked)); // vùng cấm: nền mây mù và ổ khoá (xem room.css)
   ui.panelLinks.replaceChildren(...(c.links || []).map((link) => Object.assign(document.createElement('a'), {
     href: link.href, textContent: link.text, className: 'btn', target: '_blank', rel: 'noopener',
   })));

@@ -339,17 +339,20 @@ body.is-night .progress.is-done {
   color: #5a463f;
 }
 
-/* ---------- Vùng cấm: nội dung bị mây mù che phủ, ở giữa có ổ khoá ---------- */
+/* ---------- Vùng cấm: mây mù trôi làm nền, ổ khoá ở trên, mấy dòng úp mở hiện rõ trên lớp mây ---------- */
+/* Chữ giữ đúng kiểu như ở các khung khác (căn trái, chữ đứng), chỉ khác là nằm trên nền mây */
 .panel.is-locked .panel__body {
   position: relative;
-  min-height: 190px;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 18px 8px;
   overflow: hidden;
   border-radius: 16px;
 }
 
 .panel.is-locked .panel__body p {
-  filter: blur(7px);
-  user-select: none;
+  position: relative;
+  z-index: 1; /* nằm trên lớp mây */
 }
 
 /* Lớp mây: nhiều đám mây tròn mờ chồng lên nhau, trôi chầm chậm qua lại */
@@ -368,21 +371,22 @@ body.is-night .progress.is-done {
   animation: fog 9s ease-in-out infinite alternate;
 }
 
-/* Ổ khoá nằm giữa */
+/* Ổ khoá đứng đầu (order: -1 đưa nó lên trước mấy dòng chữ; z-index để không bị lớp mây vẽ đè lên) */
 .panel.is-locked .panel__body::after {
   content: '🔒';
-  position: absolute;
-  top: 50%;
-  left: 50%;
+  position: relative;
+  z-index: 1;
+  order: -1;
+  align-self: center;
   display: grid;
   place-items: center;
-  width: 76px;
-  height: 76px;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 14px;
   border-radius: 50%;
-  font-size: 34px;
+  font-size: 28px;
   background: #fff;
   box-shadow: 0 8px 24px rgba(60, 30, 20, 0.22);
-  transform: translate(-50%, -50%);
 }
 
 @keyframes fog {
