@@ -25,9 +25,11 @@ export function buildRealm(world) {
   const sea = buildCloudSea(realm, world.sunDir);
   const isles = buildFarIslands(realm);
   const sky = buildSunMoonStars(realm, world.sunDir);
+  const whale = buildWhale(realm);
+  world.whale = whale.now; // gọi cá voi ra ngay, không phải đợi tới lượt (thử trong Console: room.world.whale())
   realm.traverse(decoration); // cảnh nền: không bấm được, không đổ bóng
 
-  world.updaters.push((t) => {
+  world.updaters.push((t, dt) => {
     // Cất cánh thì mờ dần trong lúc Trái Đất thật hiện ra (p từ 0 tới 0,1), hạ cánh thì ngược lại
     const keep = 1 - THREE.MathUtils.smoothstep(world.spaceProgress, 0, 0.1);
     realm.visible = keep > 0.001;
@@ -37,7 +39,226 @@ export function buildRealm(world) {
     sea.update(t, n, keep, calm);
     isles.update(t, n, keep, calm);
     sky.update(t, n, keep);
+    whale.update(t, dt, n, keep, calm);
   });
+}
+
+// Đổi chế độ trong suốt cho một nhóm vật liệu chỉ khi cần mờ dần (bình thường vẽ như vật đặc cho khỏi lỗi chồng hình)
+function fader(mats) {
+  let fading = false;
+  return (opacity) => {
+    const now = opacity < 0.999;
+    if (now !== fading) {
+      fading = now;
+      mats.forEach((m) => { m.transparent = fading; m.needsUpdate = true; });
+    }
+    mats.forEach((m) => { m.opacity = opacity; });
+  };
+}
+
+// ---------- Cá voi bay ----------
+// Thỉnh thoảng một con cá voi khổng lồ bơi ngang qua biển mây: lượn lên khỏi mây rồi lặn xuống thành từng vòng,
+// mỗi lần ngoi lên tới đỉnh thì phun một vòi hơi nước. Đuôi quẫy nhịp nhàng, vây ngực khẽ vẫy.
+// Ban đêm những đốm trên lưng phát sáng xanh như sứa. Lượt đầu bơi ngang khung hình quen thuộc, các lượt sau đổi hướng.
+const WHALE_L = 22;  // dài gấp đôi hòn đảo
+const WHALE_R = 3.1; // bán kính chỗ thân to nhất
+const SWIM = 3.2;    // tốc độ bơi
+const ARC = 16;      // mỗi vòng lượn lên lặn xuống mất bao nhiêu giây
+const PATH = 90;     // mỗi lượt bơi từ -PATH tới +PATH dọc theo đường bơi
+
+function buildWhale(realm) {
+  const L = WHALE_L;
+  const R = WHALE_R;
+  // Độ to của thân dọc theo chiều dài: s = 0 ở mũi, s = 1 ở chóp đuôi
+  const S = [0, 0.04, 0.12, 0.25, 0.4, 0.55, 0.62, 0.7, 0.8, 0.9, 1];
+  const RR = [0.22, 0.58, 0.86, 1, 0.97, 0.82, 0.72, 0.58, 0.4, 0.24, 0.12];
+  const radius = (s) => {
+    const i = Math.min(S.length - 2, S.findIndex((x, k) => s <= S[k + 1]));
+    return THREE.MathUtils.lerp(RR[i], RR[i + 1], (s - S[i]) / (S[i + 1] - S[i])) * R;
+  };
+  const along = (s) => L / 2 - s * L; // vị trí dọc thân, mũi ở phía +x
+  const backColor = new THREE.Color('#4a67a3');
+  const bellyColor = new THREE.Color('#e3eef8');
+  const FLAT = 0.85; // thân hơi dẹt theo chiều đứng
+
+  // Một khúc thân từ s0 tới s1: xoay một đường viền quanh trục rồi dựng nằm ngang, lưng sẫm bụng sáng
+  const segment = (s0, s1, originX) => {
+    const pts = [];
+    if (s1 === 1) pts.push(new THREE.Vector2(0, along(1) - originX - 0.05)); // khép chóp đuôi
+    for (let s = s1; s >= s0 - 1e-6; s -= 0.02) pts.push(new THREE.Vector2(radius(s), along(s) - originX));
+    if (s0 === 0) pts.push(new THREE.Vector2(0, along(0) - originX + 0.12)); // khép mũi
+    const geo = new THREE.LatheGeometry(pts, 32).rotateZ(-Math.PI / 2).scale(1, FLAT, 1);
+    const pos = geo.attributes.position;
+    const colors = new Float32Array(pos.count * 3);
+    const c = new THREE.Color();
+    for (let i = 0; i < pos.count; i++) {
+      c.copy(bellyColor).lerp(backColor, THREE.MathUtils.smoothstep(pos.getY(i), -0.55 * R, -0.1 * R)); // lưng xanh phủ xuống quá nửa sườn
+      c.toArray(colors, i * 3);
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geo.computeVertexNormals();
+    return geo;
+  };
+
+  const bodyMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, emissive: '#3a5aa8', emissiveIntensity: 0 });
+  const finMat = new THREE.MeshStandardMaterial({ color: backColor, roughness: 0.6, emissive: '#3a5aa8', emissiveIntensity: 0 });
+  const eyeMat = new THREE.MeshStandardMaterial({ color: '#1d2236', roughness: 0.3 });
+  const spotMat = new THREE.MeshStandardMaterial({ color: '#dffbff', emissive: '#5ff4ff', emissiveIntensity: 0.2, roughness: 0.4 });
+  const fade = fader([bodyMat, finMat, eyeMat, spotMat]);
+
+  const whale = new THREE.Group();
+  whale.add(new THREE.Mesh(segment(0, 0.62, 0), bodyMat));
+
+  // Khúc đuôi và vây đuôi quẫy lên xuống quanh khớp ở giữa thân
+  const JOINT = along(0.6);
+  const tail = at(new THREE.Group(), JOINT, 0, 0);
+  tail.add(new THREE.Mesh(segment(0.58, 1, JOINT), bodyMat));
+  const flukeGeo = new THREE.SphereGeometry(1, 20, 12);
+  for (const side of [-1, 1]) {
+    const fluke = new THREE.Mesh(flukeGeo, finMat);
+    fluke.scale.set(R * 0.75, R * 0.07, R * 1.15);
+    tail.add(at(fluke, along(0.97) - JOINT - R * 0.35, 0, side * R * 0.85, 0, side * 0.45, 0));
+  }
+  whale.add(tail);
+
+  // Vây ngực hai bên, chúc xuống và quặt ra sau
+  const fins = [-1, 1].map((side) => {
+    const pivot = at(new THREE.Group(), along(0.3), -0.45 * R, side * 0.75 * R);
+    const fin = new THREE.Mesh(flukeGeo, finMat);
+    fin.scale.set(R * 0.9, R * 0.07, R * 0.36);
+    pivot.add(at(fin, -R * 0.55, 0, side * R * 0.3, side * 0.5, side * 0.4, 0));
+    whale.add(pivot);
+    return { pivot, side };
+  });
+
+  // Mắt, có chấm sáng cho long lanh
+  for (const side of [-1, 1]) {
+    const z = side * radius(0.12) * 0.86;
+    whale.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.34, 14, 10), eyeMat), along(0.12), -0.18 * R, z));
+    whale.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 6), spotMat), along(0.12) + 0.12, -0.12 * R, z * 1.1));
+  }
+
+  // Đốm trên lưng, ban đêm phát sáng
+  for (let k = 0; k < 16; k++) {
+    const s = 0.12 + (k % 8) * 0.06;
+    const side = k < 8 ? 1 : -1;
+    const a = 0.45 + (k % 3) * 0.18; // góc tính từ đỉnh lưng xuống sườn
+    const r = radius(s) * 1.01;
+    const spot = new THREE.Mesh(new THREE.SphereGeometry(0.16 + (k % 4) * 0.05, 10, 8), spotMat);
+    whale.add(at(spot, along(s), Math.cos(a) * r * FLAT, side * Math.sin(a) * r));
+  }
+  realm.add(whale);
+
+  // Vòi hơi nước: mấy đám hơi trắng bắn vọt lên từ lỗ thở trên đỉnh đầu rồi tan
+  const puffTex = canvasTexture(64, 64, (ctx) => {
+    const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    g.addColorStop(0.55, 'rgba(255, 255, 255, 0.7)');
+    g.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 64, 64);
+  });
+  // Hơi nước hơi ánh xanh cho nổi trên nền trời màu đào
+  const spray = Array.from({ length: 18 }, () => {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: puffTex, color: '#d4ecff', transparent: true, depthWrite: false, opacity: 0 }));
+    s.visible = false;
+    realm.add(s);
+    return { s, v: new THREE.Vector3(), life: 0 };
+  });
+  const blowhole = new THREE.Vector3(along(0.17), radius(0.17) * FLAT, 0);
+  const spout = () => {
+    whale.updateMatrixWorld(); // vị trí vừa cập nhật trong khung hình này
+    const from = whale.localToWorld(blowhole.clone());
+    spray.forEach((p, i) => {
+      p.s.position.copy(from);
+      p.v.set(between(-0.9, 0.9), 4.5 + (i % 5) * 0.8, between(-0.9, 0.9));
+      p.life = 1;
+      p.delay = i * 0.035;
+    });
+  };
+
+  // Chọn đường bơi: đi ngang qua trước một hướng nhìn, cách hòn đảo một quãng, không đâm vào đảo nào
+  const pass = { on: false, wait: 14, s: 0, dir: 1, phase: 0, center: new THREE.Vector2(), tangent: new THREE.Vector2(), peaked: false };
+  const clear = (center, tangent) => ISLES.every(({ pos, size }) => {
+    const rel = new THREE.Vector2(pos[0], pos[2]).sub(center);
+    const along2 = THREE.MathUtils.clamp(rel.dot(tangent), -PATH, PATH);
+    const gap = rel.sub(tangent.clone().multiplyScalar(along2)).length();
+    // Cá voi bơi dọc theo đường, nên hai bên chỉ cần chừa bằng sải vây đuôi (chừng 2R) cộng cỡ hòn đảo
+    return gap > size * 1.4 + 2 * R + 1 || Math.abs(pos[1] - (SEA_Y + 3)) > 12;
+  });
+  let first = true;
+  const startPass = () => {
+    for (let tries = 0; tries < 24; tries++) {
+      // Lượt đầu: bơi ngang phía sau hòn đảo, đúng chỗ khung hình mặc định nhìn tới
+      const fixed = first && tries === 0;
+      const angle = fixed ? -Math.PI * 0.75 : rand() * Math.PI * 2;
+      const dist = fixed ? 22 : between(22, 34);
+      pass.center.set(Math.cos(angle), Math.sin(angle)).multiplyScalar(dist);
+      pass.tangent.set(-Math.sin(angle), Math.cos(angle)).multiplyScalar(rand() < 0.5 ? 1 : -1);
+      if (!clear(pass.center, pass.tangent)) continue;
+      first = false;
+      pass.on = true;
+      pass.s = -PATH;
+      pass.phase = -Math.PI / 2; // bắt đầu từ dưới mây trồi lên
+      return;
+    }
+    pass.wait = 20; // không tìm được đường nào thoáng thì lát nữa thử lại
+  };
+
+  const p = new THREE.Vector3();
+  return {
+    update(t, dt, n, keep, calm) {
+      // Hơi nước của vòi phun
+      spray.forEach((q) => {
+        if (q.life <= 0) return;
+        if (q.delay > 0) { q.delay -= dt; return; }
+        q.v.y -= 1.6 * dt;
+        q.s.position.addScaledVector(q.v, dt);
+        q.life -= dt / 2.2;
+        q.s.visible = q.life > 0;
+        q.s.scale.setScalar(1.1 + (1 - q.life) * 3.6);
+        q.s.material.opacity = Math.min(1, Math.sin(Math.max(0, q.life) * Math.PI) * 1.3) * keep;
+      });
+
+      if (!pass.on) {
+        whale.visible = false;
+        if (calm && (pass.wait -= dt) <= 0) startPass();
+        return;
+      }
+      pass.s += SWIM * dt;
+      pass.phase += (Math.PI * 2 * dt) / ARC;
+      if (pass.s > PATH) {
+        pass.on = false;
+        pass.wait = 60 + rand() * 40; // một hai phút nữa mới quay lại
+        whale.visible = false;
+        return;
+      }
+      // Lượn lên khỏi mây rồi lặn xuống: mũi ngóc lên lúc trồi, chúc xuống lúc lặn
+      const y = SEA_Y + 3 + 5 * Math.sin(pass.phase);
+      const climb = (5 * Math.cos(pass.phase) * Math.PI * 2) / ARC;
+      p.set(pass.center.x + pass.tangent.x * pass.s, y, pass.center.y + pass.tangent.y * pass.s);
+      whale.position.copy(p);
+      whale.rotation.set(0, Math.atan2(-pass.tangent.y, pass.tangent.x), Math.atan2(climb, SWIM));
+      whale.visible = true;
+      tail.rotation.z = Math.sin(t * 1.4) * 0.22;
+      fins.forEach(({ pivot, side }) => { pivot.rotation.x = side * Math.sin(t * 1.1) * 0.25; });
+      // Mỗi lần ngoi lên tới đỉnh vòng lượn thì phun một vòi hơi nước
+      const top = Math.sin(pass.phase) > 0.97;
+      if (top && !pass.peaked) spout();
+      pass.peaked = top;
+
+      bodyMat.emissiveIntensity = n * 0.35; // ban đêm thân hơi ửng xanh cho thấy dáng
+      finMat.emissiveIntensity = n * 0.35;
+      spotMat.emissiveIntensity = 0.2 + n * 2.6; // đốm trên lưng sáng như sứa
+      // Mờ dần ở hai đầu đường bơi (và khi cất cánh)
+      const ends = THREE.MathUtils.smoothstep(pass.s, -PATH, -PATH + 14) * (1 - THREE.MathUtils.smoothstep(pass.s, PATH - 14, PATH));
+      fade(ends * keep);
+    },
+    // Cho cá voi bơi ra ngay (thử trong Console: room.world.whale())
+    now() {
+      pass.wait = 0;
+    },
+  };
 }
 
 // ---------- Biển mây ----------
