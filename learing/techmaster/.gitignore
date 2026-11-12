@@ -1,0 +1,13 @@
+# File do máy tự sinh ra, không phải bài làm: không cần lưu vào git
+
+# Bản biên dịch (.class) và thư mục build của IntelliJ / Maven
+*.class
+out/
+target/
+
+# Cấu hình riêng của IntelliJ trên từng máy
+.idea/
+*.iml
+
+# Bản lưu tự động của tiện ích Local History trong VS Code
+.history/
