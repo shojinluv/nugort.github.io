@@ -1,4 +1,4 @@
-// room.js – Dựng "cái vỏ" căn phòng: sàn, tường, cửa sổ, bầu trời, tia nắng,
+// room.js – Dựng "cái vỏ" căn phòng: sàn, tường, vách kính hologram, cửa sổ, bầu trời, tia nắng,
 // dây đèn trang trí, tranh treo tường và đồng hồ chạy theo giờ thật.
 import * as THREE from 'three';
 import { mat, box, cylinder, sphere, at, stick, canvasTexture, random, decoration } from './helpers.js';
@@ -30,6 +30,161 @@ export function buildRoom(world) {
   buildStickyNotes(room);
   buildClock(room, world);
   buildShield(room, world);
+  buildGlass(room, world);
+}
+
+// ---------- Vách kính hologram: trần nhà, hai phía để hở (trước, phải), ô cửa sổ và ô kính tròn cửa khoang ----------
+// Kính siêu mỏng, gần như trong suốt: chỉ thấy một đường viền mảnh ở mép và chút ánh khi nhìn xiên.
+// Thỉnh thoảng một dải hologram quét chéo qua từng tấm, hiện lưới tổ ong và đốm lấp lánh, ánh cầu vồng
+// giống khiên bong bóng lúc bay ra vũ trụ. Camera xuyên qua tấm nào thì tấm đó gợn sóng tại chỗ xuyên.
+// Kính chỉ để nhìn: vẫn bấm xuyên qua được vào đồ vật bên trong, và không đổ bóng
+// (trần kính vẫn giữ "trần tàng hình" chặn nắng ở buildWalls, nên nắng chỉ lọt vào qua cửa sổ như cũ).
+// Lịch quét dùng Math.random chứ không dùng random() của helpers, để không xáo trộn chuỗi số
+// ngẫu nhiên mà sách, lá cây… dựng sau dùng tới.
+function buildGlass(room, world) {
+  const vertexShader = /* glsl */ `
+    varying vec2 vUv;
+    varying vec3 vWorld;
+    varying vec3 vNormal;
+    void main() {
+      vUv = uv;
+      vNormal = normalize(mat3(modelMatrix) * normal);
+      vec4 w = modelMatrix * vec4(position, 1.0);
+      vWorld = w.xyz;
+      gl_Position = projectionMatrix * viewMatrix * w;
+    }`;
+  const fragmentShader = /* glsl */ `
+    uniform float time;
+    uniform float glow;     // độ sáng chung (ban đêm dịu bớt cho khỏi chói)
+    uniform vec2 size;      // kích thước tấm kính, tính theo đơn vị của cảnh
+    uniform float isRound;  // 1: ô kính tròn (mép tính theo vòng tròn), 0: tấm chữ nhật (không đặt tên "round", trùng hàm có sẵn của GLSL)
+    uniform float grid;     // số ô tổ ong trên một đơn vị dài (ô kính nhỏ thì lưới dày hơn cho đủ chi tiết)
+    uniform vec3 sweep;     // x: lúc bắt đầu quét, y: hướng quét (góc), z: quét hết bao lâu
+    uniform vec3 ripples[3]; // xy: chỗ camera xuyên qua (trên mặt kính), z: đã bao lâu
+    varying vec2 vUv;
+    varying vec3 vWorld;
+    varying vec3 vNormal;
+    // Khoảng cách tới cạnh ô lục giác gần nhất (giống lưới trên khiên bong bóng)
+    float hexEdge(vec2 p) {
+      vec2 r = vec2(1.0, 1.7320508);
+      vec2 h = r * 0.5;
+      vec2 a = mod(p, r) - h;
+      vec2 b = mod(p - h, r) - h;
+      vec2 g = dot(a, a) < dot(b, b) ? a : b;
+      g = abs(g);
+      return 0.5 - max(dot(g, normalize(r)), g.x);
+    }
+    float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+    void main() {
+      vec2 p = vUv * size;
+
+      // Mép kính: một đường sáng thật mảnh, ngay bên trong hơi hắt sáng
+      float e = isRound > 0.5
+        ? size.x * 0.5 - length(p - size * 0.5)
+        : min(min(p.x, size.x - p.x), min(p.y, size.y - p.y));
+      float edge = smoothstep(0.03, 0.0, e) * 0.32 + smoothstep(0.3, 0.0, e) * 0.04;
+
+      // Nhìn càng xiên thì mặt kính càng ánh lên
+      vec3 view = normalize(cameraPosition - vWorld);
+      float f = 1.0 - abs(dot(normalize(vNormal), view));
+      float rim = pow(f, 4.0) * 0.16;
+
+      // Dải hologram quét chéo: s là vị trí dọc theo hướng quét (0 → 1 từ mép này sang mép kia)
+      vec2 dir = vec2(cos(sweep.y), sin(sweep.y));
+      float span = abs(dir.x) * size.x + abs(dir.y) * size.y;
+      float s = dot(p - size * 0.5, dir) / span + 0.5;
+      float k = (time - sweep.x) / sweep.z;
+      float band = (k > 0.0 && k < 1.0) ? exp(-pow((s - mix(-0.2, 1.2, k)) / 0.08, 2.0)) : 0.0;
+
+      float line = 1.0 - smoothstep(0.0, 0.05, hexEdge(p * grid));
+      vec2 cell = floor(p * grid * 2.7);
+      float seed = hash(cell);
+      float sparkle = step(0.93, seed) * smoothstep(0.22, 0.0, length(fract(p * grid * 2.7) - 0.5))
+        * (0.55 + 0.45 * sin(time * 9.0 + seed * 40.0));
+
+      // Gợn sóng lan ra từ chỗ camera vừa xuyên qua
+      float ring = 0.0;
+      for (int i = 0; i < 3; i++) {
+        float age = ripples[i].z;
+        ring += smoothstep(0.09, 0.0, abs(length(p - ripples[i].xy) - age * 2.4)) * exp(-age * 1.5);
+      }
+
+      // Ánh cầu vồng đổi theo góc nhìn và vị trí, pha với xanh lơ (cùng tông với khiên)
+      vec3 film = 0.5 + 0.5 * cos(6.2831853 * (vec3(0.0, 0.33, 0.67) + f * 1.2 + s * 0.7 + time * 0.03));
+      vec3 color = mix(vec3(0.55, 0.9, 1.0), film, 0.6);
+      float a = 0.01 + edge + rim + band * (0.05 + line * 0.5 + sparkle * 1.1) + ring * (0.3 + line * 0.45);
+      gl_FragColor = vec4(color * glow, a);
+    }`;
+
+  const panels = [];
+  // Một tấm kính hologram: geometry phẳng nằm trong mặt xy của nó (uv trải từ góc dưới trái), rộng w cao h
+  const addGlass = (geometry, w, h, parent, place, { round = false, grid = 2.6 } = {}) => {
+    const uniforms = {
+      time: { value: 0 },
+      glow: { value: 1 },
+      size: { value: new THREE.Vector2(w, h) },
+      isRound: { value: round ? 1 : 0 },
+      grid: { value: grid },
+      sweep: { value: new THREE.Vector3(-99, 0, 1.6) },
+      ripples: { value: Array.from({ length: 3 }, () => new THREE.Vector3(0, 0, 99)) },
+    };
+    const material = new THREE.ShaderMaterial({
+      uniforms, vertexShader, fragmentShader,
+      transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
+    });
+    const mesh = decoration(at(new THREE.Mesh(geometry, material), ...place));
+    mesh.renderOrder = 2;
+    parent.add(mesh);
+    // next: lúc bắt đầu lượt quét kế tiếp (các tấm lệch nhau để không quét cùng lúc); side: camera đang ở phía nào của tấm
+    panels.push({ mesh, uniforms, w, h, round, next: 1.5 + Math.random() * 5, side: 0 });
+  };
+  const makePanel = (w, h, x, y, z, rx, ry) => addGlass(new THREE.PlaneGeometry(w, h), w, h, room, [x, y, z, rx, ry, 0]);
+  // Lòng phòng trải từ -5 tới 5 theo x và z. Kính đứng sát mép trong của hai bức tường,
+  // không chồm lên đầu tường (mặt kính trùng mặt cắt đầu tường thì hình bị nhấp nháy)
+  makePanel(10, WALL_H, 0, WALL_H / 2, 5, 0, 0);               // phía trước
+  makePanel(10, WALL_H, 5, WALL_H / 2, 0, 0, Math.PI / 2);     // bên phải
+  makePanel(10, 10, 0, WALL_H, 0, -Math.PI / 2, 0);            // trần nhà
+  // Ô cửa sổ ở tường sau: phủ thêm một lớp hologram lên tấm kính sẵn có (xem buildWindow), cùng mặt phẳng z = -5.2.
+  // Cả hai tấm đều không ghi chiều sâu nên nằm trùng nhau cũng không bị nhấp nháy
+  makePanel(WIN.x2 - WIN.x1, WIN.y2 - WIN.y1, (WIN.x1 + WIN.x2) / 2, (WIN.y1 + WIN.y2) / 2, -5.2, 0, 0);
+  // Ô kính tròn trên cửa khoang, cả mặt trong lẫn mặt ngoài (buildAirlock đánh dấu sẵn bằng userData.hologramRound).
+  // Lớp hologram đặt ngay trước tấm kính 1mm, ô nhỏ nên lưới tổ ong dày hơn
+  const portholes = [];
+  room.traverse((o) => { if (o.userData.hologramRound) portholes.push(o); });
+  portholes.forEach((g) => {
+    const r = g.geometry.parameters.radius;
+    addGlass(new THREE.CircleGeometry(r, 48), 2 * r, 2 * r, g.parent,
+      [g.position.x, g.position.y, g.position.z + 0.001, g.rotation.x, g.rotation.y, g.rotation.z], { round: true, grid: 9 });
+  });
+
+  const eye = new THREE.Vector3();
+  world.updaters.push((t, dt) => {
+    const calm = world.reduceMotion;
+    const glow = 1 - 0.35 * world.night;
+    panels.forEach((pn) => {
+      const u = pn.uniforms;
+      u.time.value = calm ? 0 : t;
+      u.glow.value = glow;
+      u.ripples.value.forEach((r) => { r.z += dt; });
+
+      // Hết lượt quét thì hẹn lượt sau: 4 đến 10 giây nữa, quét theo một đường chéo bất kỳ
+      if (!calm && t > pn.next) {
+        const diagonal = Math.PI / 4 + Math.floor(Math.random() * 4) * (Math.PI / 2);
+        u.sweep.value.set(t, diagonal + (Math.random() - 0.5) * 0.5, 1.4 + Math.random() * 0.7);
+        pn.next = t + 4 + Math.random() * 6;
+      }
+
+      // Camera vừa đổi phía so với tấm kính, và chỗ đổi nằm trong tấm: gợn sóng ở đó
+      pn.mesh.worldToLocal(eye.copy(world.camera.position));
+      const side = Math.sign(eye.z);
+      const inside = pn.round ? Math.hypot(eye.x, eye.y) < pn.w / 2 : Math.abs(eye.x) < pn.w / 2 && Math.abs(eye.y) < pn.h / 2;
+      if (pn.side && side && side !== pn.side && inside && !calm) {
+        const oldest = u.ripples.value.reduce((a, b) => (b.z > a.z ? b : a));
+        oldest.set(eye.x + pn.w / 2, eye.y + pn.h / 2, 0);
+      }
+      pn.side = side;
+    });
+  });
 }
 
 // ---------- Khiên bong bóng bọc quanh tàu khi ra ngoài vũ trụ ----------
@@ -232,6 +387,14 @@ function buildWalls(room, world) {
   );
   ceiling.userData.noPick = true;
   room.add(at(ceiling, -0.15, WALL_H + 0.05, -0.15));
+  // Hai vách kính hologram ở phía trước và bên phải (xem buildGlass) cũng chặn nắng và ánh trăng y như trần:
+  // không có hai tấm này thì lúc trăng (hay nắng chiều) nằm lệch về bên phải, ánh sáng xiên qua vách phải
+  // rọi xuống nửa sàn. Giờ ánh sáng chỉ vào phòng qua ô cửa sổ
+  for (const [w, d, x, z] of [[10.6, 0.1, -0.15, 5.05], [0.1, 10.6, 5.05, -0.15]]) {
+    const side = new THREE.Mesh(new THREE.BoxGeometry(w, WALL_H, d), ceiling.material);
+    side.userData.noPick = true;
+    room.add(at(side, x, WALL_H / 2, z));
+  }
 
   // Ốp tường màu bạc hà ở nửa dưới, nẹp trắng và len chân tường.
   // Tấm ốp ngắn hơn nẹp và len 1cm mỗi đầu: đầu tấm ốp mà nằm trùng đầu nẹp ở mép tường thì hình bị nhấp nháy
@@ -282,7 +445,8 @@ function buildWindow(room, world) {
   }
   room.add(at(cylinder(0.035, 0.035, w + 2, '#c98f5a', 12), cx, 4.95, -4.8, 0, 0, Math.PI / 2)); // thanh treo rèm
 
-  // Ô kính trong veo: nhìn xuyên ra đúng cảnh thật phía sau tường (mép đảo, bầu trời, ngoài vũ trụ là sao và Mặt Trời)
+  // Ô kính trong veo: nhìn xuyên ra đúng cảnh thật phía sau tường (mép đảo, bầu trời, ngoài vũ trụ là sao và Mặt Trời).
+  // Lớp hologram lấp lánh phủ trên ô kính này nằm chung với các vách kính khác trong buildGlass
   const glass = new THREE.MeshStandardMaterial({
     color: '#dff1ff', transparent: true, opacity: 0.1, roughness: 0.05, metalness: 0.2, depthWrite: false, side: THREE.DoubleSide,
   });
@@ -1087,7 +1251,9 @@ function buildAirlock(room, world) {
     door.add(at(plate(1.3, 3.1, 0.1, 0.08, HATCH.y - 1.85, mat('#eef1f7')), 0, 1.85, 0.1));  // cánh cửa
     door.add(at(box(1.28, 0.08, 0.02, dark, 0), 0, 1.25, 0.203));        // gân ngang (ngắn hơn cánh cửa 1cm để hai đầu không trùng mép cánh cửa)
     door.add(at(new THREE.Mesh(new THREE.PlaneGeometry(1.7, 0.3), stripeMat), 0, 0.33, 0.152)); // vạch cảnh báo ở ngưỡng cửa
-    door.add(decoration(at(new THREE.Mesh(new THREE.CircleGeometry(HATCH.r, 32), glass), 0, HATCH.y, 0.17))); // kính không đổ bóng
+    const pane = decoration(at(new THREE.Mesh(new THREE.CircleGeometry(HATCH.r, 32), glass), 0, HATCH.y, 0.17)); // kính không đổ bóng
+    pane.userData.hologramRound = true; // buildGlass phủ thêm lớp hologram lấp lánh lên ô kính này
+    door.add(pane);
     door.add(at(new THREE.Mesh(new THREE.TorusGeometry(0.39, 0.055, 12, 40), coral), 0, HATCH.y, 0.205));
 
     const wheel = at(new THREE.Group(), 0, 1.25, 0.3); // tay quay khoá cửa

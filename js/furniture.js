@@ -18,6 +18,7 @@ export function buildFurniture(world) {
   buildGuitar(world);
   buildBag(world);
   buildCat(world);
+  buildTeaTable(world); // dựng sau cùng: không dùng random(), và các vật trôi lơ lửng của nó xếp cuối danh sách
 }
 
 // Đăng ký một đồ vật bấm được. Gốc toạ độ của group nên đặt ở chân đồ vật,
@@ -683,6 +684,174 @@ function buildCat(world) {
     });
   });
   clickable(world, 'cat', g);
+}
+
+// ---------- Bàn trà đạo giữa phòng ----------
+// Bàn tròn thấp kiểu Nhật (chabudai) đặt trên thảm, ngay sau lưng con mèo đang ngủ, hai tấm nệm ngồi (zabuton) hai bên.
+// Trên bàn bày bộ trà đạo: ấm gang (tetsubin) đặt trên lót, bát trà (chawan) có matcha sủi bọt còn bốc hơi,
+// chổi tre đánh trà (chasen), hộp trà sơn mài (natsume) gác muỗng tre (chashaku), đĩa bánh mochi và một cành hoa trà.
+// Mỗi món đặt thẳng vào cảnh (không lồng trong bàn) để ngoài vũ trụ món nào cũng trôi lơ lửng theo kiểu riêng.
+// Không dùng random() của helpers, để sách, lá cây… không bị đổi chỗ.
+function buildTeaTable(world) {
+  const { scene } = world;
+  const TX = -0.2;
+  const TZ = 0.2;    // tâm bàn: gần giữa phòng, nằm trên thảm, cách mèo một chút
+  const TOP = 0.56;  // độ cao mặt bàn
+  const place = (obj, x, y, z, ry = 0) => at(obj, TX + x, y, TZ + z, 0, ry, 0);
+  // Số ngẫu nhiên riêng cho mấy hình vẽ trên bàn (bọt matcha, vân gang), lần nào tải trang cũng giống nhau
+  let seed = 8;
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+  // --- Bàn ---
+  const wood = new THREE.MeshStandardMaterial({ color: '#7a4a2e', roughness: 0.5 });
+  const dark = mat('#5e3822');
+  const table = place(new THREE.Group(), 0, 0, 0);
+  table.add(at(cylinder(0.82, 0.82, 0.07, wood, 48), 0, TOP - 0.035, 0));    // mặt bàn
+  table.add(at(cylinder(0.76, 0.72, 0.07, dark, 48), 0, TOP - 0.1, 0));      // diềm bàn
+  for (let i = 0; i < 4; i++) {
+    const a = Math.PI / 4 + (i * Math.PI) / 2;
+    table.add(at(cylinder(0.05, 0.045, TOP - 0.1, dark, 10), Math.cos(a) * 0.52, (TOP - 0.1) / 2 + 0.028, Math.sin(a) * 0.52));
+  }
+  scene.add(table);
+  floaty(world, table, { lift: [0, 0.35, 0], tilt: [0.08, 0.1, 0.08], spin: 0.08, delay: 0.3, bob: 0.05 });
+
+  // --- Hai tấm nệm ngồi, mỗi tấm có núm chần ở giữa ---
+  [['#4f5d95', -1.3, -0.05, 0.2], ['#8aa86a', 0.3, -1.1, 0.45]].forEach(([color, x, z, ry], i) => {
+    const cushion = place(new THREE.Group(), x, 0.09, z, ry);
+    cushion.add(box(0.95, 0.13, 0.95, color, 0.06));
+    cushion.add(at(sphere(0.035, '#f4e6c8', 10, 8), 0, 0.065, 0));
+    scene.add(cushion);
+    floaty(world, cushion, { lift: [0, 0.45 + i * 0.2, 0], tilt: [0.3, 0.4, 0.3], spin: 0.2 - i * 0.4, delay: 0.2 + i * 0.1 });
+  });
+
+  // Hơi nước bốc lên nhè nhẹ (giống cốc cà phê trên bàn học): ngoài vũ trụ chân không thì tắt
+  const steamOver = (group, x, y, z, size = 0.03) => {
+    const puffs = [0, 1, 2].map(() => {
+      const s = sphere(size, new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0, depthWrite: false }), 10, 8);
+      group.add(decoration(s));
+      return s;
+    });
+    world.updaters.push((t) => {
+      puffs.forEach((s, i) => {
+        const p = (t * 0.35 + i / 3) % 1;
+        s.position.set(x + Math.sin(p * 6 + i) * 0.03, y + p * 0.4, z + Math.cos(p * 5 + i) * 0.02);
+        s.scale.setScalar(0.5 + p);
+        s.material.opacity = Math.sin(p * Math.PI) * 0.45 * (1 - world.space);
+      });
+    });
+  };
+
+  // --- Bát trà matcha: men raku sẫm, chân đế nhỏ, mặt trà xanh sủi bọt ---
+  const bowlShape = [[0, 0.01], [0.068, 0], [0.072, 0.026], [0.105, 0.045], [0.138, 0.085], [0.152, 0.13], [0.155, 0.165],
+    [0.142, 0.168], [0.138, 0.13], [0.122, 0.088], [0.085, 0.058], [0, 0.05]].map(([x, y]) => new THREE.Vector2(x, y));
+  // Bát và hộp trà dựng bằng LatheGeometry (xoay một đường viền quanh trục): vẽ cả hai mặt cho chắc thấy được lòng bát
+  const glaze = new THREE.MeshStandardMaterial({ color: '#3a2f2b', roughness: 0.3, metalness: 0.05, side: THREE.DoubleSide });
+  const froth = canvasTexture(256, 256, (ctx, w, h) => {
+    const g = ctx.createRadialGradient(w / 2, h / 2, 10, w / 2, h / 2, w / 2);
+    g.addColorStop(0, '#c4dc7a');
+    g.addColorStop(0.7, '#9cc04a');
+    g.addColorStop(1, '#6f9a2e');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = 'rgba(240, 250, 210, 0.55)'; // bọt li ti sau khi đánh trà
+    for (let i = 0; i < 160; i++) {
+      const a = rnd() * Math.PI * 2;
+      const r = Math.sqrt(rnd()) * w * 0.42;
+      ctx.beginPath();
+      ctx.arc(w / 2 + Math.cos(a) * r, h / 2 + Math.sin(a) * r, 1 + rnd() * 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+  const bowl = place(new THREE.Group(), 0.12, TOP, 0.2);
+  bowl.add(new THREE.Mesh(new THREE.LatheGeometry(bowlShape, 40), glaze));
+  bowl.add(at(new THREE.Mesh(new THREE.CircleGeometry(0.132, 40), new THREE.MeshStandardMaterial({ map: froth, roughness: 0.7 })), 0, 0.12, 0, -Math.PI / 2));
+  steamOver(bowl, 0, 0.16, 0);
+  scene.add(bowl);
+  floaty(world, bowl, { lift: [0.1, 0.8, 0.1], tilt: [0.25, 0.3, 0.25], spin: 0.3, delay: 0.12 });
+
+  // --- Chổi tre đánh trà: búi nan tre xoè ra phía dưới, cán tre phía trên ---
+  const tines = canvasTexture(128, 32, (ctx, w, h) => {
+    ctx.fillStyle = '#e9d9a6';
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#c8b27a';
+    for (let x = 0; x < w; x += 4) ctx.fillRect(x, 0, 1.5, h); // từng nan tre
+  });
+  const bamboo = mat('#d9c08a');
+  const whisk = place(new THREE.Group(), 0.44, TOP, -0.02);
+  whisk.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.056, 0.11, 24, 1, true), new THREE.MeshStandardMaterial({ map: tines, roughness: 0.8, side: THREE.DoubleSide })), 0, 0.055, 0));
+  whisk.add(at(cylinder(0.026, 0.028, 0.11, bamboo, 16), 0, 0.165, 0));
+  whisk.add(at(new THREE.Mesh(new THREE.TorusGeometry(0.027, 0.006, 6, 16), mat('#2b2420')), 0, 0.14, 0, Math.PI / 2)); // vòng chỉ buộc
+  scene.add(whisk);
+  floaty(world, whisk, { lift: [0.2, 1.0, -0.1], tilt: [0.6, 0.4, 0.6], spin: 0.7, delay: 0.08 });
+
+  // --- Hộp trà sơn mài đen, viền vàng ở nắp, muỗng tre gác ngang ---
+  const natsumeShape = [[0, 0], [0.058, 0], [0.074, 0.03], [0.078, 0.07], [0.07, 0.108], [0.048, 0.124], [0, 0.128]]
+    .map(([x, y]) => new THREE.Vector2(x, y));
+  const lacquer = new THREE.MeshStandardMaterial({ color: '#1d1716', roughness: 0.18, metalness: 0.1, side: THREE.DoubleSide });
+  const caddy = place(new THREE.Group(), -0.22, TOP, 0.4);
+  caddy.add(new THREE.Mesh(new THREE.LatheGeometry(natsumeShape, 32), lacquer));
+  caddy.add(at(new THREE.Mesh(new THREE.TorusGeometry(0.077, 0.004, 6, 32), mat('#c9a15f')), 0, 0.075, 0, Math.PI / 2));
+  scene.add(caddy);
+  floaty(world, caddy, { lift: [-0.1, 0.7, 0.15], tilt: [0.3, 0.2, 0.3], spin: -0.35, delay: 0.1 });
+  const scoop = place(new THREE.Group(), -0.22, TOP + 0.128, 0.4, 0.5); // nằm vắt ngang trên nắp hộp trà
+  scoop.add(at(box(0.3, 0.008, 0.024, bamboo, 0.003), 0, 0.004, 0));
+  scoop.add(at(box(0.04, 0.008, 0.03, bamboo, 0.003), 0.165, 0.012, 0, 0, 0, 0.5)); // đầu muỗng hơi cong lên
+  scene.add(scoop);
+  floaty(world, scoop, { lift: [0.1, 1.25, 0.2], tilt: [0.8, 0.9, 0.8], spin: 1.1, delay: 0.05 });
+
+  // --- Ấm gang có hạt nổi (arare) đặt trên lót gỗ, quai cong vắt qua đầu ---
+  const arare = canvasTexture(256, 128, (ctx, w, h) => {
+    ctx.fillStyle = '#34302e';
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#4a4542';
+    for (let y = 10; y < h; y += 12) {
+      for (let x = (y / 12) % 2 ? 6 : 12; x < w; x += 12) {
+        ctx.beginPath();
+        ctx.arc(x, y, 3.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  });
+  const iron = new THREE.MeshStandardMaterial({ color: '#ffffff', map: arare, roughness: 0.65, metalness: 0.35 });
+  const ironPlain = new THREE.MeshStandardMaterial({ color: '#2f2b2a', roughness: 0.6, metalness: 0.4 });
+  const kettle = place(new THREE.Group(), -0.4, TOP, -0.24, 0.6);
+  kettle.add(at(cylinder(0.17, 0.17, 0.02, '#a8724a', 32), 0, 0.01, 0)); // lót ấm
+  const body = sphere(0.17, iron, 32, 20);
+  body.scale.set(1, 0.78, 1);
+  kettle.add(at(body, 0, 0.15, 0));
+  kettle.add(at(cylinder(0.075, 0.08, 0.025, ironPlain, 24), 0, 0.27, 0));   // nắp
+  kettle.add(at(sphere(0.022, ironPlain, 12, 8), 0, 0.29, 0));               // núm nắp
+  const spoutBase = new THREE.Vector3(0.14, 0.14, 0);
+  const spoutTip = new THREE.Vector3(0.25, 0.22, 0);
+  kettle.add(stick(spoutBase, spoutTip, 0.022, ironPlain));                  // vòi ấm
+  // Quai: nửa vòng tròn vắt ngang qua nắp, hai đầu bám vào vai ấm, nằm vuông góc với vòi
+  kettle.add(at(new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.012, 8, 24, Math.PI), ironPlain), 0, 0.25, 0, 0, Math.PI / 2, 0));
+  steamOver(kettle, spoutTip.x + 0.02, spoutTip.y + 0.02, 0, 0.025);
+  scene.add(kettle);
+  floaty(world, kettle, { lift: [-0.15, 0.6, -0.1], tilt: [0.2, 0.25, 0.2], spin: 0.25, delay: 0.18 });
+
+  // --- Đĩa bánh mochi: một viên hồng anh đào, một viên trắng ---
+  const plate = place(new THREE.Group(), 0.32, TOP, -0.36);
+  plate.add(at(cylinder(0.11, 0.08, 0.018, '#fbf6ee', 32), 0, 0.009, 0));
+  [['#f6b8c8', -0.04, 0.02], ['#fbf4ea', 0.045, -0.025]].forEach(([color, x, z]) => {
+    const mochi = sphere(0.045, color, 16, 12);
+    mochi.scale.set(1, 0.72, 1);
+    plate.add(at(mochi, x, 0.048, z));
+  });
+  scene.add(plate);
+  floaty(world, plate, { lift: [0.25, 0.9, -0.2], tilt: [0.5, 0.3, 0.5], spin: -0.6, delay: 0.14 });
+
+  // --- Bình hoa trà (chabana): bình men ngọc dáng cao, một cành hoa trà đỏ ---
+  const vase = place(new THREE.Group(), -0.56, TOP, 0.16);
+  vase.add(at(cylinder(0.035, 0.05, 0.2, '#9cc5b0', 20), 0, 0.1, 0));
+  vase.add(stick(new THREE.Vector3(0, 0.18, 0), new THREE.Vector3(0.03, 0.36, 0.01), 0.006, '#4d6b3a')); // cành
+  const leaf = sphere(0.03, '#3f6b3a', 10, 8);
+  leaf.scale.set(1.6, 0.4, 0.8);
+  vase.add(at(leaf, 0.04, 0.3, 0, 0, 0, 0.5));
+  vase.add(at(sphere(0.04, '#d6334a', 14, 10), 0.03, 0.375, 0.01));          // hoa trà
+  vase.add(at(sphere(0.014, '#f4c542', 8, 6), 0.03, 0.405, 0.01));           // nhuỵ vàng
+  scene.add(vase);
+  floaty(world, vase, { lift: [-0.2, 0.85, 0.1], tilt: [0.4, 0.3, 0.4], spin: 0.4, delay: 0.16 });
 }
 
 // ---------- Bộ đồ phi hành gia của mèo ----------
