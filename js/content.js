@@ -7,6 +7,7 @@ export const labels = {
   computer: 'Máy tính · Về mình',
   guitar: 'Cây đàn · The Band',
   bag: 'Túi hàng · Chợ Nugỏrt',
+  notebook: 'Cuốn vở · Bài tập Java',
   lamp: 'Đèn bàn · Đổi ngày/đêm',
   cat: 'Mèo Sphynx · Đang ngủ',
   plant: 'Cây Monstera · Tưới cây',
@@ -76,6 +77,16 @@ export const content = {
       'Có tìm kiếm, lọc theo danh mục, giỏ hàng, và trang chi tiết từng món với phân loại, đánh giá. Hàng hóa đều là đồ lặt vặt trong căn phòng này 📦',
     ],
     links: [{ text: 'Ghé Chợ Nugỏrt', href: 'learing/f8/shopee-clone/index.html' }],
+  },
+  notebook: {
+    tag: 'Dự án · Java',
+    title: 'Vở bài tập Java',
+    body: [
+      'Mấy bài tập hồi học Java ở Techmaster: từ tính BMI, FizzBuzz, xử lý chuỗi, mảng hai chiều tới màn hình đăng nhập JavaFX đầu tiên.',
+      'Bài nào cũng chạy thử được ngay trên trình duyệt, trong một cửa sổ giống IntelliJ, có code gốc nằm bên cạnh ☕',
+      'Nói trước là cũng chẳng có gì đặc biệt: phần lớn bài tập không có ở đây, để vào cho phông bạt thôi 😅',
+    ],
+    links: [{ text: 'Mở vở bài tập', href: 'learing/techmaster/index.html' }],
   },
   scroll: {
     tag: 'Tranh cuộn · Thiền',

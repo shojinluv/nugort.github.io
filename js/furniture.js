@@ -297,16 +297,19 @@ function buildShelf(world) {
   floaty(world, cactus, { lift: [0.3, 0.35, 0.1], tilt: [0.3, 0.2, 0.3], spin: 0.4, delay: 0.2 });
 }
 
-// ---------- Ghế lười và chồng sách ----------
+// ---------- Ghế lười, cuốn vở Java (bấm vào → Vở bài tập Java) và chồng sách ----------
 function buildBeanBag(world) {
   const { scene } = world;
   const bag = sphere(0.95, '#8fc9e8', 32, 20);
   bag.scale.set(1, 0.55, 1);
   scene.add(at(bag, 3.5, 0.48, 2.6));
-  const book = at(box(0.55, 0.07, 0.4, '#ef6f5c', 0.015), 3.35, 1.0, 2.5, 0.12, 0.6, -0.08);
-  scene.add(book);
   floaty(world, bag, { lift: [0, 0.3, 0], tilt: [0.06, 0.1, 0.06], delay: 0.35, bob: 0.05 });
-  floaty(world, book, { lift: [0, 0.9, 0.1], tilt: [0.5, 0.4, 0.5], spin: 0.45, delay: 0.1 });
+
+  // Cuốn vở nằm trên ghế lười: gốc group đặt ở mặt dưới cuốn vở, để rê chuột vào thì vở phóng to từ dưới lên
+  const notebook = at(new THREE.Group(), 3.35, 0.965, 2.5, 0.12, 0.6, -0.08);
+  notebook.add(at(box(0.55, 0.07, 0.4, '#ef6f5c', 0.015), 0, 0.035, 0));
+  clickable(world, 'notebook', notebook);
+  floaty(world, notebook, { lift: [0, 0.9, 0.1], tilt: [0.5, 0.4, 0.5], spin: 0.45, delay: 0.1 });
 
   // Chồng sách: ngoài vũ trụ thì tách ra, mỗi cuốn bay một độ cao và xoay một chiều
   const drift = [[[-0.1, 0.45, 0.1], 0.3], [[0.12, 0.8, -0.1], -0.4], [[0, 1.15, 0.08], 0.5]];

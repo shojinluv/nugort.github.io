@@ -8,6 +8,7 @@ bấm vào đồ vật để xem các dự án.
 | 🖥️ Máy tính | Giới thiệu về mình |
 | 🎸 Đàn guitar | Mở dự án **The Band** |
 | 🛍️ Túi hàng | Mở dự án **Shopee clone** |
+| 📕 Cuốn vở trên ghế lười | Mở **Vở bài tập Java** (bài tập Java chạy thử ngay trên trình duyệt) |
 | 💡 Đèn bàn | Đổi ngày ↔ đêm |
 | 🐱 Mèo Sphynx | Mèo giật mình nói chuyện |
 | 🪴 Cây Monstera | Tưới cây, cây lớn dần |
@@ -57,6 +58,9 @@ js/helpers.js       Hàm tiện ích để dựng hình hộp, hình trụ, text
 js/content.js       Chữ và link trong khung thông tin (sửa nội dung ở đây)
 vendor/three/       Thư viện Three.js r186 (giấy phép MIT)
 learing/            Các bài tập cũ (F8, Techmaster)
+learing/techmaster/ Vở bài tập Java: index.html liệt kê bài theo buổi; bấm vào là chạy thử trong terminal giả
+                    (web/programs.js dựng lại từng bài bằng JavaScript, web/jvm.js giả lập Scanner và cách in số
+                    của Java) và xem code gốc trong java/
 ```
 
 ## Muốn sửa thì sửa ở đâu?

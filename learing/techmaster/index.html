@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Vở bài tập Java · Shojinluv</title>
+  <meta name="description" content="Những bài tập Java hồi học ở Techmaster, bấm vào là chạy thử được ngay trên trình duyệt.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕</text></svg>">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;600;800&family=JetBrains+Mono:wght@400;600&family=Patrick+Hand&display=swap">
+  <link rel="stylesheet" href="web/style.css">
+  <script type="module" src="web/app.js"></script>
+</head>
+<body>
+  <div class="page">
+    <a class="back" href="../../index.html">← Về căn phòng nhỏ</a>
+
+    <header class="hero">
+      <p class="hero__eyebrow">Techmaster · Java căn bản · tháng 2/2022</p>
+      <h1 class="hero__title">Vở bài tập <span class="hero__java">Java</span> <span class="hero__cup" aria-hidden="true">☕</span></h1>
+      <p class="hero__lead">
+        Mấy bài tập hồi mới học Java, giờ chạy thử được ngay trên trình duyệt. Bấm vào bài nào là mở cửa sổ chạy,
+        gõ số rồi nhấn Enter y như trong IntelliJ, xem code gốc ở bên cạnh.
+      </p>
+      <p class="hero__small">
+        Phần chạy thử là bản dựng lại bằng JavaScript, cố giữ đúng từng chữ in ra, cách tính kiểu float của Java và cả
+        mấy chỗ còn ngô nghê. Bài nào không được gọi trong <code>main</code> thì gọi thẳng hàm của bài đó.
+      </p>
+      <ul class="stats">
+        <li><b id="stat-days">7</b> buổi</li>
+        <li><b id="stat-lessons">19</b> bài</li>
+        <li><b id="stat-files">38</b> file code</li>
+      </ul>
+    </header>
+
+    <nav class="days" id="days" aria-label="Các buổi học"></nav>
+
+    <main id="lessons"></main>
+
+    <footer class="foot">
+      <a href="../../index.html">← Về căn phòng nhỏ</a>
+      <a href="https://github.com/shojinluv/nugort.github.io/tree/main/learing/techmaster/java" target="_blank" rel="noopener">Toàn bộ code trên GitHub ↗</a>
+    </footer>
+  </div>
+
+  <dialog class="lab" id="lab" aria-labelledby="lab-title">
+    <div class="lab__frame">
+      <header class="lab__head">
+        <span class="lab__icon" id="lab-icon" aria-hidden="true"></span>
+        <div class="lab__heading">
+          <h2 id="lab-title"></h2>
+          <p class="lab__path" id="lab-path"></p>
+        </div>
+        <button class="lab__close" id="lab-close" type="button" aria-label="Đóng">✕</button>
+      </header>
+
+      <p class="lab__note" id="lab-note" hidden></p>
+
+      <div class="lab__tabs" role="tablist" aria-label="Chọn phần muốn xem">
+        <button type="button" role="tab" data-pane="run" id="tab-run">▶ Chạy thử</button>
+        <button type="button" role="tab" data-pane="code">&lt;/&gt; Code</button>
+      </div>
+
+      <div class="lab__body">
+        <section class="pane pane--run" aria-label="Chạy thử">
+          <div class="term" id="term">
+            <div class="term__bar">
+              <span class="term__dots" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="term__title">Run</span>
+              <button type="button" class="term__btn" id="term-rerun">↻ Chạy lại</button>
+              <button type="button" class="term__btn" id="term-stop">■ Dừng</button>
+            </div>
+            <div class="term__screen" id="term-screen" role="log" aria-live="polite"></div>
+          </div>
+
+          <!-- Cửa sổ JavaFX dựng lại theo file hello-view.fxml (400 × 600) -->
+          <div class="fx" id="fx" hidden>
+            <div class="fx__window">
+              <div class="fx__bar"><span>☕ Hello!</span><span class="fx__ctrl" aria-hidden="true">— ▢ ✕</span></div>
+              <div class="fx__body">
+                <p class="fx__brand">SUPER IDOL SOCIAL NETWORK</p>
+                <div class="fx__field">Username/Email</div>
+                <div class="fx__field">Password</div>
+                <button type="button" class="fx__link" data-handler="onForgotPasswordClick">Forgot password?</button>
+                <div class="fx__buttons">
+                  <button type="button" class="fx__btn" data-handler="onSiginClick">Login</button>
+                  <button type="button" class="fx__btn" data-handler="onSigupClick">Be the Super idol</button>
+                </div>
+                <p class="fx__status" id="fx-status" aria-live="polite"></p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="pane pane--code" aria-label="Code gốc">
+          <div class="files" id="files" role="tablist" aria-label="Các file"></div>
+          <div class="code-wrap" id="code-wrap"><pre class="code"><code id="code"></code></pre></div>
+          <a class="gh" id="gh" target="_blank" rel="noopener">Xem file này trên GitHub ↗</a>
+        </section>
+      </div>
+    </div>
+  </dialog>
+
+  <noscript><p class="noscript">Trang này cần bật JavaScript để hiện danh sách bài và chạy thử.</p></noscript>
+</body>
+</html>
