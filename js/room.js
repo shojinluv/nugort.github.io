@@ -1033,7 +1033,11 @@ function buildAirlock(room, world) {
     wheels.push(wheel);
     door.add(at(cylinder(0.06, 0.06, 0.12, dark, 12), 0, 1.25, 0.24, Math.PI / 2)); // trục tay quay
 
+    // Đèn báo bắt vít lên một đế kim loại áp sát tường, có mái che nhỏ phía trên (không lơ lửng trước tường)
+    door.add(at(box(0.66, 0.3, 0.06, dark, 0.02), 0, 3.86, 0.03));          // đế đèn
     door.add(at(box(0.5, 0.16, 0.08, lampMat, 0.03), 0, 3.86, 0.1));        // đèn báo
+    door.add(at(box(0.6, 0.035, 0.13, dark, 0.012), 0, 3.97, 0.105));       // mái che
+    for (const x of [-0.29, 0.29]) door.add(at(cylinder(0.018, 0.018, 0.02, metal, 8), x, 3.86, 0.065, Math.PI / 2)); // đinh vít
     if (outside) {
       door.add(at(box(0.3, 0.44, 0.07, dark, 0.02), -1.65, 1.6, 0.035));    // bảng phím
       door.add(at(box(0.2, 0.1, 0.02, keyMat, 0), -1.65, 1.72, 0.075));

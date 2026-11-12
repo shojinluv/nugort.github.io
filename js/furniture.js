@@ -615,52 +615,200 @@ function buildCat(world) {
     stare(point) {
       lookAt = point;
     },
+    // Gọi mèo ra ao chơi ngay (thử trong Console: room.world.cat.roam()), không phải đợi tới lượt
+    roam() {
+      trip.wait = 0;
+    },
   };
   const restYaw = g.rotation.y;
   let yaw = restYaw;
   const pivot = new THREE.Vector3(0.15, 0.28, 0); // tâm thân mèo: lộn nhào quanh điểm này
   let shiftX = 0;
   let shiftZ = 0;
+
+  // ---- Thỉnh thoảng mèo dậy, nhảy lóc cóc ra ao chơi với cá rồi về chỗ cũ ngủ tiếp ----
+  // Chỉ đi chơi lúc căn phòng đang đậu trên đảo. Đang ở ngoài ao mà bấm "Vũ trụ" thì mèo vội nhảy về.
+  const HOP = 0.42;  // thời gian một bước nhảy (giây)
+  const LEAP = 0.62; // cú nhảy từ sàn nhà xuống bãi cỏ (và ngược lại) lâu hơn một chút
+  const STEP = 0.7;  // mỗi bước nhảy xa chừng này
+  const VIA = [[3.0, 0.0], [4.8, 0.1]]; // vòng qua phía sau chồng sách, ra tới mép phải của sàn nhà
+  const PLAY = 15;   // nằm chơi bên ao bao lâu (giây)
+  const trip = { phase: 'home', t: 0, wait: 25 + Math.random() * 20, k: 0, hops: [], swipe: -1, swipeIn: 0, leg: 0, splashed: false };
+  const fish = new THREE.Vector3();
+  const paw = new THREE.Vector3();
+  const pondCenter = new THREE.Vector3();
+  const ss = THREE.MathUtils.smoothstep;
+
+  // Các điểm đáp [x, z, độ cao mặt đất]: từ chỗ nằm ở nhà, nhảy từng bước trên sàn, rồi nhảy một cú xuống cỏ cạnh ao
+  const planTrip = (homeX, homeZ) => {
+    const pts = [[homeX, homeZ], ...VIA];
+    const hops = [[homeX, homeZ, 0.03]];
+    for (let i = 1; i < pts.length; i++) {
+      const [x0, z0] = pts[i - 1];
+      const [x1, z1] = pts[i];
+      const n = Math.max(1, Math.round(Math.hypot(x1 - x0, z1 - z0) / STEP));
+      for (let j = 1; j <= n; j++) hops.push([x0 + ((x1 - x0) * j) / n, z0 + ((z1 - z0) * j) / n, 0.03]);
+    }
+    const spot = world.pond.spot();
+    hops.push([spot.x, spot.z, spot.y + 0.03]);
+    return hops;
+  };
+  // Vị trí mèo ở tiến độ k (k = 2.5 là đang bay giữa điểm đáp thứ 2 và thứ 3): nhảy theo đường vòng cung
+  const hopAt = (k) => {
+    const i = Math.max(0, Math.min(Math.ceil(k) - 1, trip.hops.length - 2));
+    const f = Math.min(1, Math.max(0, k - i));
+    const [x0, z0, y0] = trip.hops[i];
+    const [x1, z1, y1] = trip.hops[i + 1];
+    const h = 0.24 + 0.35 * Math.abs(y1 - y0); // cú nhảy lên xuống sàn thì vồng cao hơn để khỏi vướng mép sàn
+    return { i, f, x: x0 + (x1 - x0) * f, z: z0 + (z1 - z0) * f, y: y0 + (y1 - y0) * f + Math.sin(f * Math.PI) * h, dx: x1 - x0, dz: z1 - z0 };
+  };
+  const hopTime = (i) => (trip.hops[i][2] !== trip.hops[i + 1][2] ? LEAP : HOP);
+
   world.updaters.push((t, dt) => {
     const calm = world.reduceMotion ? 0 : 1;
-    // Bị soi thì xoay cả người cho mặt hướng ra ô kính (đầu mèo nằm ở phía +x của nó), hết bị soi thì quay về
-    const wantYaw = lookAt ? Math.atan2(g.position.z - lookAt.z, lookAt.x - g.position.x) : restYaw;
-    const nextYaw = yaw + (wantYaw - yaw) * Math.min(1, dt * 5);
+
+    // Lịch đi chơi: ngủ → thức dậy → nhảy ra ao → chơi với cá → nhảy về → nằm xuống ngủ tiếp
+    const canRoam = !!world.pond && world.spaceProgress === 0 && !world.reduceMotion;
+    trip.t += dt;
+    switch (trip.phase) {
+      case 'home':
+        if (canRoam && !lookAt && jump === 0 && (trip.wait -= dt) <= 0) {
+          trip.hops = planTrip(g.position.x - shiftX, g.position.z - shiftZ);
+          trip.k = 0;
+          trip.phase = 'wake';
+          trip.t = 0;
+        }
+        break;
+      case 'wake':
+        if (!canRoam) trip.phase = 'settle';
+        else if (trip.t > 1) trip.phase = 'go';
+        break;
+      case 'go':
+      case 'back': {
+        if (!canRoam) trip.phase = 'back'; // phòng sắp cất cánh: quay về ngay
+        const back = trip.phase === 'back';
+        const i = Math.max(0, Math.min(back ? Math.ceil(trip.k) - 1 : Math.floor(trip.k), trip.hops.length - 2));
+        trip.k += ((back ? -1 : 1) * dt * (canRoam ? 1 : 2.5)) / hopTime(i);
+        if (!back && trip.k >= trip.hops.length - 1) {
+          trip.k = trip.hops.length - 1;
+          trip.phase = 'play';
+          trip.t = 0;
+          trip.swipeIn = 1.5;
+        } else if (back && trip.k <= 0) {
+          trip.k = 0;
+          trip.phase = 'settle';
+          trip.t = 0;
+        }
+        break;
+      }
+      case 'play':
+        if (!canRoam || trip.t > PLAY) {
+          if (trip.swipe < 0) trip.phase = 'back'; // vỗ nốt cái rồi mới về
+        } else if (trip.swipe < 0 && (trip.swipeIn -= dt) <= 0) {
+          trip.swipe = 0;
+          trip.leg = 1 - trip.leg;
+          trip.splashed = false;
+        }
+        break;
+      case 'settle':
+        if (trip.t > 0.8) {
+          trip.phase = 'home';
+          trip.wait = 45 + Math.random() * 45;
+        }
+        break;
+    }
+    const roaming = trip.phase !== 'home';
+    const moving = trip.phase === 'go' || trip.phase === 'back';
+    let tripX = 0;
+    let tripZ = 0;
+    let groundY = 0.03;
+    let pitch = 0;
+    let squash = 1;
+    let wantYaw = lookAt ? Math.atan2(g.position.z - lookAt.z, lookAt.x - g.position.x) : restYaw;
+    if (roaming) {
+      const p = hopAt(trip.k);
+      tripX = p.x - trip.hops[0][0];
+      tripZ = p.z - trip.hops[0][1];
+      groundY = p.y;
+      awake = Math.max(awake, 0.3); // đi chơi thì mở mắt
+      if (moving) {
+        const sign = trip.phase === 'back' ? -1 : 1;
+        wantYaw = Math.atan2(-p.dz * sign, p.dx * sign);
+        pitch = 0.22 * Math.cos(p.f * Math.PI) * sign;                  // ngóc đầu lúc bật lên, chúi xuống lúc đáp
+        squash = 0.84 + 0.16 * Math.min(1, Math.sin(p.f * Math.PI) * 3); // dẹp xuống một chút lúc chạm đất
+      } else if (trip.phase === 'wake') {
+        const [x0, z0] = trip.hops[0];
+        const [x1, z1] = trip.hops[1];
+        wantYaw = Math.atan2(-(z1 - z0), x1 - x0);
+      } else if (trip.phase === 'play') {
+        pondCenter.copy(world.pond.center());
+        wantYaw = Math.atan2(-(pondCenter.z - g.position.z), pondCenter.x - g.position.x);
+      }
+    }
+
+    // Quay người: bị soi thì mặt hướng ra ô kính, đi chơi thì hướng theo đường nhảy (đầu mèo ở phía +x của nó)
+    const turn = Math.atan2(Math.sin(wantYaw - yaw), Math.cos(wantYaw - yaw));
+    const nextYaw = yaw + turn * Math.min(1, dt * (roaming ? 8 : 5));
     g.rotation.y += nextYaw - yaw; // chỉ cộng phần chênh lệch, giống cách dời vị trí bên dưới
     yaw = nextYaw;
-    if (lookAt) awake = Math.max(awake, 0.4); // mở mắt lườm
-    body.scale.y = 1 + Math.sin(t * 2.2) * 0.035;      // thở
+    if (lookAt && !roaming) awake = Math.max(awake, 0.4); // mở mắt lườm
+    body.scale.y = (1 + Math.sin(t * 2.2) * 0.035) * squash; // thở
+
+    // Nằm bên ao: đầu dõi theo con cá gần nhất, thỉnh thoảng giơ chân vỗ nước một cái
+    let headYaw = 0;
+    let swipeLift = 0;
+    if (trip.phase === 'play') {
+      paw.set(g.position.x + Math.cos(yaw) * 0.6, g.position.y, g.position.z - Math.sin(yaw) * 0.6);
+      world.pond.nearestFish(paw, fish);
+      const look = Math.atan2(-(fish.z - paw.z), fish.x - paw.x) - yaw;
+      headYaw = Math.max(-0.7, Math.min(0.7, Math.atan2(Math.sin(look), Math.cos(look))));
+    }
+    if (trip.swipe >= 0) {
+      trip.swipe += dt / 0.75;
+      const f = trip.swipe;
+      swipeLift = f < 0.55 ? 0.95 * ss(f, 0, 0.55) : 0.95 * (1 - ss(f, 0.55, 0.67)); // giơ lên từ từ, đập xuống thật nhanh
+      if (f >= 0.67 && !trip.splashed) {
+        trip.splashed = true;
+        world.pond.splash(g.localToWorld(paw.set(0.76, 0.04, FORELEGS[trip.leg])));
+      }
+      if (f >= 1) {
+        trip.swipe = -1;
+        trip.swipeIn = 1.8 + Math.random() * 2.2;
+      }
+    }
+    head.rotation.y += (headYaw - head.rotation.y) * Math.min(1, dt * 6);
 
     // Ngoài vũ trụ: mặc đồ phi hành gia, bay lơ lửng và lắc lư chầm chậm
     const e = THREE.MathUtils.smoothstep(world.spaceProgress, 0.1, 0.7);
-    // Vẫy đuôi. Ngoài vũ trụ thì đuôi duỗi ra phía sau, để chóp đuôi không chui vào trong mũ
-    tailPivot.rotation.y = -0.55 * e + Math.sin(t * 1.4) * (0.12 + 0.1 * e);
+    // Vẫy đuôi (chơi với cá thì vẫy hăng hơn). Ngoài vũ trụ thì đuôi duỗi ra phía sau, để chóp đuôi không chui vào trong mũ
+    const eager = trip.phase === 'play' ? 1 : 0;
+    tailPivot.rotation.y = -0.55 * e + Math.sin(t * (1.4 + 2.6 * eager)) * (0.12 + 0.1 * e + 0.14 * eager);
     updateSuit(e, t);
     // Chân trước buông thõng xuống dưới ngực và khẽ đung đưa như đang bơi trong không trung
     forelegs.forEach((leg, i) => {
-      leg.rotation.z = -e * (1.2 + Math.sin(t * 1.3 + i * 1.5) * 0.12 * calm);
+      leg.rotation.z = -e * (1.2 + Math.sin(t * 1.3 + i * 1.5) * 0.12 * calm) + (i === trip.leg ? swipeLift : 0);
       leg.scale.x = 1 - 0.4 * e; // co chân lại cho ngắn bớt (chân duỗi thẳng xuống trông dài quá)
     });
 
     jump = Math.max(0, jump - dt * 1.6);
     flip = Math.max(0, flip - dt * 0.8);
-    g.position.y = 0.03
+    g.position.y = groundY
       + Math.sin((1 - jump) * Math.PI) * 0.55          // nảy lên rồi rơi xuống
       + e * (1.05 + Math.sin(t * 0.9) * 0.12 * calm);  // bay lơ lửng
 
     // Lộn nhào: xoay quanh trục z của mèo, rồi dời vị trí bù lại để tâm thân mèo (pivot) đứng yên
     const somersault = flip > 0 ? -Math.PI * 2 * THREE.MathUtils.smootherstep(1 - flip, 0, 1) : 0;
     const roll = e * Math.sin(t * 0.5) * 0.2 * calm + somersault;
-    g.rotation.z = roll;
+    g.rotation.z = roll + pitch;
     g.rotation.x = e * Math.sin(t * 0.37) * 0.12 * calm;
     const c = Math.cos(roll);
     const s = Math.sin(roll);
     const ox = pivot.x - (pivot.x * c - pivot.y * s);
     g.position.y += pivot.y - (pivot.x * s + pivot.y * c);
-    // Phần dời ngang phải xoay theo hướng mèo nằm (yaw). Chỉ cộng phần chênh lệch,
+    // Phần dời ngang phải xoay theo hướng mèo nằm (yaw), cộng thêm quãng đường đi chơi. Chỉ cộng phần chênh lệch,
     // để lệnh nghịch trong Console như room.world.clickables.cat.position.x = 3 vẫn dùng được
-    const dx = ox * Math.cos(yaw);
-    const dz = -ox * Math.sin(yaw);
+    const dx = ox * Math.cos(yaw) + tripX;
+    const dz = -ox * Math.sin(yaw) + tripZ;
     g.position.x += dx - shiftX;
     g.position.z += dz - shiftZ;
     shiftX = dx;

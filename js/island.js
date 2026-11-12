@@ -50,6 +50,8 @@ export function insideIsland(x, y, z) {
 const FLOOR = 5.4; // nửa cạnh sàn nhà (cộng chút lề), tính từ tâm đảo
 const POND = { a: 0.2, r: 7.6, size: 1.25 };
 const [PX, PZ] = polar(POND.a, POND.r);
+const POND_Y = -0.05;  // mặt nước ao (cao hơn mặt cỏ một chút, để cá có chỗ bơi bên dưới)
+const CAT_SPOT = 1.75; // mèo ra nằm chơi ở mép ao phía căn phòng (phía -x), cách tâm ao chừng này
 const LANTERN = [3.4, 7.0];
 const SIGN = [-0.7, 7.5];
 const STONES = [[1.3, 6.1], [1.9, 6.95], [1.35, 7.8], [1.95, 8.6]];
@@ -60,6 +62,7 @@ function freeSpot(x, z, margin = 0.6) {
   if (r > edge(Math.atan2(z, x)) - margin) return false;
   if (Math.abs(x) < FLOOR && Math.abs(z) < FLOOR) return false;
   if (Math.hypot(x - PX, z - PZ) < POND.size + 0.5) return false;
+  if (Math.hypot(x - (PX - CAT_SPOT - 0.1), z - PZ) < 0.8) return false; // chỗ mèo ra nằm chơi bên ao
   if (Math.abs(x - 1.6) < 0.7 && z > FLOOR) return false;
   if (Math.hypot(x - LANTERN[0], z - LANTERN[1]) < 0.5 || Math.hypot(x - SIGN[0], z - SIGN[1]) < 0.8) return false;
   return true;
@@ -77,6 +80,30 @@ export function buildIsland(world) {
   buildFlowers(island);
   const glowShrooms = buildMushrooms(island);
   const water = buildPond(island);
+  // Cho con mèo trong phòng thỉnh thoảng ra ao chơi với cá (xem buildCat trong furniture.js).
+  // Các điểm ở đây tính theo toạ độ thế giới; mèo chỉ ra ao lúc hòn đảo đang nằm yên.
+  const fishPos = new THREE.Vector3();
+  const toWorld = (x, y, z) => {
+    island.updateWorldMatrix(true, false); // vị trí đảo vừa được cập nhật trong khung hình này
+    return island.localToWorld(new THREE.Vector3(x, y, z));
+  };
+  world.pond = {
+    spot: () => toWorld(PX - CAT_SPOT, -0.14, PZ), // mặt cỏ chỗ mèo nằm
+    center: () => toWorld(PX, POND_Y, PZ),
+    nearestFish(point, out) {
+      let best = Infinity;
+      for (const f of water.fishes) {
+        f.getWorldPosition(fishPos);
+        const d = fishPos.distanceToSquared(point);
+        if (d < best) {
+          best = d;
+          out.copy(fishPos);
+        }
+      }
+      return out;
+    },
+    splash: (point) => water.splash(island.worldToLocal(point.clone())),
+  };
   const lantern = buildPathAndLantern(island);
   const rocks = buildFloatingRocks(island);
   const clouds = buildClouds(island);
@@ -488,19 +515,97 @@ function buildPond(island) {
     return tex;
   };
 
-  // Mặt ao, viền đá và lá sen
-  const pondMat = new THREE.MeshStandardMaterial({ color: '#79c9e6', roughness: 0.15, metalness: 0.1, emissive: '#2a6f9a', emissiveIntensity: 0.15 });
-  island.add(at(new THREE.Mesh(new THREE.CircleGeometry(POND.size, 32), pondMat), PX, -0.12, PZ, -Math.PI / 2, 0, 0));
+  // Ao trong veo: đáy ao màu sẫm, mặt nước trong suốt phủ lên trên, nhìn thấy cá bơi giữa hai lớp
+  island.add(at(new THREE.Mesh(new THREE.CircleGeometry(POND.size, 32), mat('#3f8fae')), PX, -0.13, PZ, -Math.PI / 2, 0, 0));
+  const pondMat = new THREE.MeshStandardMaterial({
+    color: '#8fd6ee', roughness: 0.1, metalness: 0.1, emissive: '#2a6f9a', emissiveIntensity: 0.15, transparent: true, opacity: 0.55,
+  });
+  island.add(at(new THREE.Mesh(new THREE.CircleGeometry(POND.size, 32), pondMat), PX, POND_Y, PZ, -Math.PI / 2, 0, 0));
+  // Viền đá quanh ao: chừa một khe cho nước chảy ra suối, một khe phía căn phòng cho mèo ra nằm chơi
   for (let i = 0; i < 11; i++) {
-    const a = (i / 11) * Math.PI * 2;
-    if (Math.abs(Math.atan2(Math.sin(a - POND.a), Math.cos(a - POND.a))) < 0.4) continue; // chừa chỗ cho nước chảy ra
+    const a = Math.PI + (i / 11) * Math.PI * 2;
+    const off = (b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+    if (off(POND.a) < 0.4 || off(Math.PI) < 0.3) continue;
     const s = sphere(between(0.2, 0.3), '#c9c1b8', 8, 6);
     s.scale.y = 0.5;
     island.add(at(s, PX + Math.cos(a) * (POND.size + 0.05), -0.1, PZ + Math.sin(a) * (POND.size + 0.05)));
   }
   const pad = new THREE.Mesh(new THREE.CircleGeometry(0.32, 20, 0.4, Math.PI * 2 - 0.5), mat('#5fb36a'));
-  island.add(at(pad, PX - 0.35, -0.1, PZ - 0.3, -Math.PI / 2, 0, 0));
-  island.add(at(sphere(0.09, '#ff9ec4', 10, 8), PX - 0.35, -0.04, PZ - 0.3));
+  island.add(at(pad, PX - 0.35, POND_Y + 0.01, PZ - 0.3, -Math.PI / 2, 0, 0));
+  island.add(at(sphere(0.09, '#ff9ec4', 10, 8), PX - 0.35, POND_Y + 0.07, PZ - 0.3));
+
+  // Cá chép Koi bơi lượn vòng quanh ao. Mèo vỗ nước gần con nào thì con đó giật mình bơi vụt đi
+  const FISH_Y = -0.09;
+  const finGeo = new THREE.CircleGeometry(0.09, 10, Math.PI - 0.75, 1.5).rotateX(-Math.PI / 2); // vây đuôi xoè hình quạt
+  const sideFinGeo = new THREE.CircleGeometry(0.045, 8, Math.PI * 0.55, 0.9).rotateX(-Math.PI / 2);
+  const fishes = [
+    { body: '#ff7a3a', fin: '#ffb38a', r: 0.55, v: 0.32, phase: 0 },
+    { body: '#fff3e8', fin: '#ffffff', spot: '#ff6a3a', r: 0.78, v: -0.26, phase: 2.1 },
+    { body: '#ffb347', fin: '#ffe0a8', r: 0.38, v: 0.28, phase: 4.0 },
+    { body: '#ff5a4a', fin: '#ff9f8f', spot: '#fff3e8', r: 0.8, v: 0.22, phase: 1.2 },
+    { body: '#3a3333', fin: '#6a5f5f', spot: '#ff7a3a', r: 0.66, v: -0.34, phase: 5.2 },
+  ].map((f) => {
+    const g = new THREE.Group();
+    const body = sphere(0.1, f.body, 14, 10);
+    body.scale.set(1.6, 0.3, 0.62);
+    g.add(body);
+    if (f.spot) {
+      const spot = sphere(0.055, f.spot, 10, 8);
+      spot.scale.set(1.2, 0.35, 0.9);
+      g.add(at(spot, 0.03, 0.012, 0));
+    }
+    for (const s of [-1, 1]) g.add(at(sphere(0.012, '#1d1d1d', 6, 4), 0.115, 0.01, s * 0.035)); // mắt
+    const finMat = new THREE.MeshStandardMaterial({ color: f.fin, transparent: true, opacity: 0.85, side: THREE.DoubleSide, roughness: 0.6 });
+    const tail = at(new THREE.Group(), -0.14, 0, 0);
+    tail.add(new THREE.Mesh(finGeo, finMat));
+    g.add(tail);
+    for (const s of [-1, 1]) {
+      const side = new THREE.Mesh(sideFinGeo, finMat);
+      side.scale.z = s;
+      g.add(at(side, 0.05, -0.005, s * 0.04));
+    }
+    g.position.set(PX + Math.cos(f.phase) * f.r, FISH_Y, PZ + Math.sin(f.phase) * f.r);
+    g.scale.set(1.2, 1, 1.2); // to ra cho dễ nhìn từ xa, giữ nguyên bề dày để không nhô lên khỏi mặt nước
+    island.add(g);
+    return { ...f, g, tail, angle: f.phase, heading: 0, boost: 0 };
+  });
+
+  // Gợn sóng và mấy giọt nước bắn lên mỗi lần mèo vỗ nước
+  const rippleMat = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0, depthWrite: false });
+  const ripples = [0, 1, 2].map(() => {
+    const m = decoration(new THREE.Mesh(new THREE.RingGeometry(0.06, 0.085, 28).rotateX(-Math.PI / 2), rippleMat.clone()));
+    m.visible = false;
+    island.add(m);
+    return { m, life: 0 };
+  });
+  const dropMat = new THREE.MeshStandardMaterial({ color: '#d6f3ff', emissive: '#7fcbe8', emissiveIntensity: 0.4, roughness: 0.2 });
+  const drops = Array.from({ length: 8 }, () => {
+    const m = decoration(sphere(0.022, dropMat, 8, 6));
+    m.visible = false;
+    island.add(m);
+    return { m, v: new THREE.Vector3(), life: 0 };
+  });
+  let nextRipple = 0;
+  const splash = (p) => {
+    const r = ripples[nextRipple++ % ripples.length];
+    r.life = 1;
+    r.m.position.set(p.x, POND_Y + 0.004, p.z);
+    drops.forEach((d) => {
+      const a = Math.random() * Math.PI * 2;
+      const s = 0.25 + Math.random() * 0.45;
+      d.m.position.set(p.x, POND_Y + 0.02, p.z);
+      d.v.set(Math.cos(a) * s, 1.1 + Math.random() * 0.8, Math.sin(a) * s);
+      d.life = 1;
+    });
+    for (const f of fishes) {
+      const dx = p.x - f.g.position.x;
+      const dz = p.z - f.g.position.z;
+      if (dx * dx + dz * dz > 0.8 * 0.8) continue;
+      f.boost = 1;
+      // Đang bơi về phía chỗ vỗ nước thì quay đầu bơi ngược lại
+      if (Math.cos(f.heading) * dx - Math.sin(f.heading) * dz > 0) f.v = -f.v;
+    }
+  };
 
   // Suối và thác nước: một dải nước liền mạch chảy từ ao ra mép đảo, vọt qua mép rồi cong dần xuống
   // theo đường parabol như nước thật. Càng rơi càng nhanh (vệt nước kéo dài ra), loe rộng và tan dần thành hơi nước.
@@ -622,7 +727,41 @@ function buildPond(island) {
         s.scale.setScalar(0.9 + k * 1.4);
         s.material.opacity = 0.5 * Math.sin(k * Math.PI);
       });
+
+      // Cá bơi vòng quanh ao, lúc gần lúc xa tâm ao; giật mình thì bơi nhanh gấp mấy lần rồi chậm dần lại
+      for (const f of fishes) {
+        f.boost = Math.max(0, f.boost - dt * 0.8);
+        const r = f.r + 0.12 * Math.sin(t * 0.37 + f.phase);
+        f.angle += (f.v / r) * (1 + 3 * f.boost) * dt * calm;
+        const x = PX + Math.cos(f.angle) * r;
+        const z = PZ + Math.sin(f.angle) * r;
+        const dx = x - f.g.position.x;
+        const dz = z - f.g.position.z;
+        if (dx * dx + dz * dz > 1e-10) {
+          const want = Math.atan2(-dz, dx);
+          f.heading += Math.atan2(Math.sin(want - f.heading), Math.cos(want - f.heading)) * Math.min(1, dt * 10);
+        }
+        f.g.position.set(x, FISH_Y, z);
+        f.g.rotation.y = f.heading + Math.sin(t * 5 + f.phase) * 0.06 * calm; // thân uốn nhẹ theo nhịp bơi
+        f.tail.rotation.y = Math.sin(t * (6 + 12 * f.boost) + f.phase) * 0.45 * calm;
+      }
+      for (const r of ripples) {
+        r.life = Math.max(0, r.life - dt);
+        r.m.visible = r.life > 0;
+        r.m.scale.setScalar(1 + (1 - r.life) * 6);
+        r.m.material.opacity = 0.8 * r.life;
+      }
+      for (const d of drops) {
+        if (d.life <= 0) continue;
+        d.v.y -= 6 * dt;
+        d.m.position.addScaledVector(d.v, dt);
+        d.life -= dt;
+        d.m.visible = d.life > 0 && d.m.position.y > POND_Y;
+        if (!d.m.visible) d.life = 0;
+      }
     },
+    splash,
+    fishes: fishes.map((f) => f.g),
   };
 }
 
@@ -634,23 +773,29 @@ function buildPathAndLantern(island) {
     island.add(at(s, x, -0.12, z, 0, i * 0.7, 0));
   });
 
-  // Biển gỗ chỉ đường
+  // Biển gỗ: hòn đảo này vẫn là Trái Đất, nhưng ở một chiều không gian khác
   const wood = mat('#a8724a');
   const sign = at(new THREE.Group(), SIGN[0], -0.12, SIGN[1], 0, 0.55, 0);
   sign.add(at(cylinder(0.06, 0.07, 1.4, wood, 8), 0, 0.7, 0));
-  const text = canvasTexture(512, 160, (ctx, w, h) => {
+  const text = canvasTexture(640, 220, (ctx, w, h) => {
     ctx.fillStyle = '#c98f5a';
     ctx.fillRect(0, 0, w, h);
     ctx.fillStyle = 'rgba(120, 70, 40, 0.25)'; // vân gỗ
     for (let y = 12; y < h; y += 22) ctx.fillRect(0, y + Math.sin(y) * 3, w, 3);
     ctx.fillStyle = '#5b3420';
-    ctx.font = '64px "Patrick Hand", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('Nhà của Shojinluv', w / 2, h / 2 + 4);
+    // Mỗi dòng bắt đầu ở cỡ chữ cho sẵn rồi co dần cho vừa bề ngang tấm biển
+    const line = (str, size, y) => {
+      do ctx.font = `${size--}px "Patrick Hand", sans-serif`;
+      while (ctx.measureText(str).width > w - 48 && size > 20);
+      ctx.fillText(str, w / 2, y);
+    };
+    line('Vẫn là Trái Đất,', 74, 76);
+    line('nhưng ở một chiều không gian khác', 50, 156);
   });
-  const board = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.46, 0.06), [wood, wood, wood, wood, new THREE.MeshStandardMaterial({ map: text, roughness: 0.9 }), wood]);
-  sign.add(at(board, 0, 1.2, 0.05, 0, 0, -0.04));
+  const board = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.65, 0.06), [wood, wood, wood, wood, new THREE.MeshStandardMaterial({ map: text, roughness: 0.9 }), wood]);
+  sign.add(at(board, 0, 1.25, 0.05, 0, 0, -0.04));
   island.add(sign);
 
   // Đèn lồng: tối thì sáng ấm lên
