@@ -271,20 +271,37 @@ function buildWhale(realm) {
   const spotMat = new THREE.MeshStandardMaterial({ color: '#dffbff', emissive: '#5ff4ff', emissiveIntensity: 0.2, roughness: 0.4 });
   const fade = fader([bodyMat, finMat, eyeMat, spotMat]);
 
-  const whale = new THREE.Group();
-  whale.add(new THREE.Mesh(segment(0, 0.62, 0), bodyMat));
+  // Quẫy đuôi: thân là một khối liền, nửa sau uốn cong mềm dần về phía chóp đuôi (uốn ngay trong shader).
+  // Độ lệch lên xuống ở chỗ s: bend · L · 0,3 · k², với k chạy từ 0 (giữa thân) tới 1 (chóp đuôi)
+  const BEND_FROM = 0.42;
+  const bend = { value: 0 };
+  const lift = (s) => {
+    const k = Math.max(0, s - BEND_FROM) / (1 - BEND_FROM);
+    return bend.value * L * 0.3 * k * k;
+  };
+  bodyMat.onBeforeCompile = (shader) => {
+    shader.uniforms.uBend = bend;
+    shader.vertexShader = `uniform float uBend;\n${shader.vertexShader}`.replace('#include <begin_vertex>', /* glsl */ `
+      #include <begin_vertex>
+      float k = max(0.0, (${(L / 2).toFixed(3)} - transformed.x) / ${L.toFixed(3)} - ${BEND_FROM.toFixed(2)}) / ${(1 - BEND_FROM).toFixed(2)};
+      transformed.y += uBend * ${(L * 0.3).toFixed(3)} * k * k;`);
+  };
 
-  // Khúc đuôi và vây đuôi quẫy lên xuống quanh khớp ở giữa thân
-  const JOINT = along(0.6);
-  const tail = at(new THREE.Group(), JOINT, 0, 0);
-  tail.add(new THREE.Mesh(segment(0.58, 1, JOINT), bodyMat));
+  const whale = new THREE.Group();
+  whale.add(new THREE.Mesh(segment(0, 1, 0), bodyMat));
+
+  // Vây đuôi gắn vào chóp đuôi: đi theo chỗ uốn và nghiêng theo độ dốc của đuôi, có một nút thịt nối cho liền
+  const fluke = at(new THREE.Group(), along(0.96), 0, 0);
   const flukeGeo = new THREE.SphereGeometry(1, 20, 12);
+  const knob = new THREE.Mesh(flukeGeo, finMat);
+  knob.scale.set(R * 0.32, R * 0.13, R * 0.24);
+  fluke.add(knob);
   for (const side of [-1, 1]) {
-    const fluke = new THREE.Mesh(flukeGeo, finMat);
-    fluke.scale.set(R * 0.75, R * 0.07, R * 1.15);
-    tail.add(at(fluke, along(0.97) - JOINT - R * 0.35, 0, side * R * 0.85, 0, side * 0.45, 0));
+    const blade = new THREE.Mesh(flukeGeo, finMat);
+    blade.scale.set(R * 0.75, R * 0.07, R * 1.15);
+    fluke.add(at(blade, -R * 0.4, 0, side * R * 0.8, 0, side * 0.45, 0));
   }
-  whale.add(tail);
+  whale.add(fluke);
 
   // Vây ngực hai bên, chúc xuống và quặt ra sau
   const fins = [-1, 1].map((side) => {
@@ -405,7 +422,12 @@ function buildWhale(realm) {
       whale.position.copy(p);
       whale.rotation.set(0, Math.atan2(-pass.tangent.y, pass.tangent.x), Math.atan2(climb, SWIM));
       whale.visible = true;
-      tail.rotation.z = Math.sin(t * 1.4) * 0.22;
+      bend.value = Math.sin(t * 1.4) * 0.22;
+      // Vây đuôi đi theo chóp đuôi: lên xuống theo chỗ uốn, nghiêng theo độ dốc của đuôi và hất thêm một chút
+      const sTip = 0.96;
+      fluke.position.y = lift(sTip);
+      const slope = (lift(sTip) - lift(sTip - 0.02)) / (-0.02 * L);
+      fluke.rotation.z = Math.atan(slope) - bend.value * 0.6;
       fins.forEach(({ pivot, side }) => { pivot.rotation.x = side * Math.sin(t * 1.1) * 0.25; });
       // Mỗi lần ngoi lên tới đỉnh vòng lượn thì phun một vòi hơi nước
       const top = Math.sin(pass.phase) > 0.97;
